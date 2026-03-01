@@ -115,7 +115,7 @@ export function getMockNews() {
       sentiment: 'negative',
       publishedAt: new Date(now - 1 * 3600000).toISOString(),
       imageUrl: null,
-      url: '#',
+      url: 'https://www.reuters.com/business/energy/',
     },
     {
       id: 2,
@@ -126,18 +126,18 @@ export function getMockNews() {
       sentiment: 'negative',
       publishedAt: new Date(now - 3 * 3600000).toISOString(),
       imageUrl: null,
-      url: '#',
+      url: 'https://www.bbc.com/news/world',
     },
     {
       id: 3,
       title: 'Gold Hits Record High as Investors Seek Safe Haven',
-      description: 'Gold prices reached an all-time high of $2,450 per ounce as geopolitical uncertainty drives investors toward traditional safe-haven assets.',
+      description: 'Gold prices reached an all-time high as geopolitical uncertainty drives investors toward traditional safe-haven assets.',
       source: 'Bloomberg',
       category: 'economy',
       sentiment: 'neutral',
       publishedAt: new Date(now - 5 * 3600000).toISOString(),
       imageUrl: null,
-      url: '#',
+      url: 'https://www.bloomberg.com/markets/commodities',
     },
     {
       id: 4,
@@ -148,7 +148,7 @@ export function getMockNews() {
       sentiment: 'negative',
       publishedAt: new Date(now - 7 * 3600000).toISOString(),
       imageUrl: null,
-      url: '#',
+      url: 'https://www.aljazeera.com/news',
     },
     {
       id: 5,
@@ -159,7 +159,7 @@ export function getMockNews() {
       sentiment: 'positive',
       publishedAt: new Date(now - 10 * 3600000).toISOString(),
       imageUrl: null,
-      url: '#',
+      url: 'https://edition.cnn.com/world',
     },
     {
       id: 6,
@@ -170,7 +170,7 @@ export function getMockNews() {
       sentiment: 'negative',
       publishedAt: new Date(now - 12 * 3600000).toISOString(),
       imageUrl: null,
-      url: '#',
+      url: 'https://www.theguardian.com/world',
     },
     {
       id: 7,
@@ -181,7 +181,7 @@ export function getMockNews() {
       sentiment: 'negative',
       publishedAt: new Date(now - 14 * 3600000).toISOString(),
       imageUrl: null,
-      url: '#',
+      url: 'https://www.ft.com/global-economy',
     },
     {
       id: 8,
@@ -192,7 +192,7 @@ export function getMockNews() {
       sentiment: 'positive',
       publishedAt: new Date(now - 18 * 3600000).toISOString(),
       imageUrl: null,
-      url: '#',
+      url: 'https://www.cnbc.com/energy/',
     },
     {
       id: 9,
@@ -203,7 +203,7 @@ export function getMockNews() {
       sentiment: 'negative',
       publishedAt: new Date(now - 22 * 3600000).toISOString(),
       imageUrl: null,
-      url: '#',
+      url: 'https://www.reuters.com/world/',
     },
     {
       id: 10,
@@ -214,7 +214,7 @@ export function getMockNews() {
       sentiment: 'neutral',
       publishedAt: new Date(now - 26 * 3600000).toISOString(),
       imageUrl: null,
-      url: '#',
+      url: 'https://www.economist.com/finance-and-economics',
     },
   ];
 }
