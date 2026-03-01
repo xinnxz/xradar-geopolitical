@@ -3,7 +3,7 @@
 // Gunakan LocalStorage untuk cache API responses
 // ========================================
 
-const CACHE_PREFIX = 'xradar_';
+const CACHE_PREFIX = 'xradar2_'; // Bumped: old entries lack chart history data
 
 /**
  * Simpan data ke cache dengan TTL (Time To Live)
