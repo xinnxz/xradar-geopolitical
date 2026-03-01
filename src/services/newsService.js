@@ -1,15 +1,110 @@
 // ========================================
 // News Data Service
-// Mock news data untuk development
+// Real API (GNews) + mock fallback
+// ========================================
+// GNews API: gratis 100 req/day, butuh API key
+// Jika key tidak ada, fallback ke mock data
 // ========================================
 
+import { API_URLS, API_KEYS } from '../utils/constants';
+import { getCache, setCache } from './cacheService';
+
 /**
- * Get mock news data
- * Nanti bisa diganti dengan NewsData.io API
+ * Fetch berita geopolitik dari GNews API (REAL DATA)
+ * Memerlukan VITE_GNEWS_KEY di .env
+ * Fallback ke mock jika key tidak tersedia
+ */
+export async function fetchNews(category = 'all') {
+  if (!API_KEYS.GNEWS) {
+    console.info('GNews API key not set, using mock data. Set VITE_GNEWS_KEY in .env');
+    return getMockNews();
+  }
+
+  const cacheKey = `news_${category}`;
+  const cached = getCache(cacheKey);
+  if (cached) return cached;
+
+  try {
+    // Build query berdasarkan kategori
+    const queries = {
+      all: 'geopolitical OR conflict OR sanctions OR war',
+      war: 'war OR military OR conflict OR troops',
+      economy: 'economy OR market OR trade OR GDP',
+      sanctions: 'sanctions OR embargo OR trade ban',
+      energy: 'oil price OR energy crisis OR OPEC OR gas',
+      diplomacy: 'diplomacy OR peace talks OR negotiations OR summit',
+    };
+
+    const q = encodeURIComponent(queries[category] || queries.all);
+    const url = `${API_URLS.GNEWS}/search?q=${q}&lang=en&max=10&apikey=${API_KEYS.GNEWS}`;
+
+    const res = await fetch(url);
+    if (!res.ok) {
+      if (res.status === 403) console.error('GNews API: Invalid key or quota exceeded');
+      throw new Error(`HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+
+    // Transform GNews format ke format kita
+    const articles = (data.articles || []).map((article, i) => ({
+      id: i + 1,
+      title: article.title,
+      description: article.description || article.content?.substring(0, 200) || '',
+      source: article.source?.name || 'Unknown',
+      category: category === 'all' ? detectCategory(article.title) : category,
+      sentiment: detectSentiment(article.title + ' ' + (article.description || '')),
+      publishedAt: article.publishedAt,
+      imageUrl: article.image,
+      url: article.url,
+    }));
+
+    setCache(cacheKey, articles, 10 * 60 * 1000); // Cache 10 menit
+    return articles;
+  } catch (error) {
+    console.error('News fetch error:', error);
+    // Fallback ke mock data jika API gagal
+    return getMockNews();
+  }
+}
+
+/**
+ * Deteksi kategori berdasarkan judul (simplified NLP)
+ */
+function detectCategory(title) {
+  const lower = title.toLowerCase();
+  if (/war|military|attack|troops|missile|bomb|battle|strike/.test(lower)) return 'war';
+  if (/sanction|embargo|ban|restrict/.test(lower)) return 'sanctions';
+  if (/oil|gas|energy|opec|fuel|pipeline/.test(lower)) return 'energy';
+  if (/economy|market|gdp|trade|stock|inflation|currency/.test(lower)) return 'economy';
+  if (/peace|diplomacy|negotiat|talk|summit|treaty/.test(lower)) return 'diplomacy';
+  return 'war'; // default for geopolitical
+}
+
+/**
+ * Deteksi sentiment berdasarkan kata kunci (simplified)
+ */
+function detectSentiment(text) {
+  const lower = text.toLowerCase();
+  const negativeWords = ['attack', 'war', 'killed', 'dead', 'bomb', 'crisis', 'threat',
+    'collapse', 'sanctions', 'destroyed', 'casualties', 'escalat', 'tension', 'struck',
+    'missile', 'invasion', 'flee', 'displaced', 'suffer'];
+  const positiveWords = ['peace', 'ceasefire', 'agreement', 'recover', 'growth', 'deal',
+    'cooperation', 'aid', 'relief', 'rebuild', 'progress', 'optimism', 'success'];
+
+  let negScore = negativeWords.filter(w => lower.includes(w)).length;
+  let posScore = positiveWords.filter(w => lower.includes(w)).length;
+
+  if (negScore > posScore) return 'negative';
+  if (posScore > negScore) return 'positive';
+  return 'neutral';
+}
+
+/**
+ * Mock news data (fallback jika API key tidak tersedia)
  */
 export function getMockNews() {
   const now = new Date();
-
   return [
     {
       id: 1,

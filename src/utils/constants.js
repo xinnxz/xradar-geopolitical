@@ -4,17 +4,13 @@
 
 // API Base URLs
 export const API_URLS = {
-  FRANKFURTER: 'https://api.frankfurter.dev',
-  FREE_GOLD: 'https://api.freegoldapi.com/api',
-  ALPHA_VANTAGE: 'https://www.alphavantage.co/query',
-  NEWSDATA: 'https://newsdata.io/api/1',
+  FRANKFURTER: 'https://api.frankfurter.dev/v1',
+  GNEWS: 'https://gnews.io/api/v4',
 };
 
-// API Keys (bisa diisi nanti, untuk sekarang pakai mock)
+// API Keys — set di .env file (VITE_ prefix agar Vite expose ke client)
 export const API_KEYS = {
-  ALPHA_VANTAGE: import.meta.env.VITE_ALPHA_VANTAGE_KEY || '',
-  NEWSDATA: import.meta.env.VITE_NEWSDATA_KEY || '',
-  ACLED: import.meta.env.VITE_ACLED_KEY || '',
+  GNEWS: import.meta.env.VITE_GNEWS_KEY || '',
 };
 
 // Forex pairs yang ditampilkan di dashboard

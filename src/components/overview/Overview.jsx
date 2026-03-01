@@ -1,18 +1,19 @@
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import {
     AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid
 } from 'recharts';
 import { MapContainer, TileLayer, Rectangle, CircleMarker } from 'react-leaflet';
 import {
     Droplets, Gem, TrendingUp, TrendingDown, Minus,
-    ShieldAlert, Newspaper, MapPin, Activity, AlertTriangle, Clock
+    ShieldAlert, Newspaper, MapPin, Clock, Wifi
 } from 'lucide-react';
-import { getMockOilData, getMockGoldData, getMockPriceSnapshot } from '../../services/marketService';
-import { getMockNews } from '../../services/newsService';
+import { fetchPriceSnapshot, getOilData, getGoldData } from '../../services/marketService';
+import { fetchNews } from '../../services/newsService';
 import { getMockConflictEvents, getConflictZones } from '../../services/conflictService';
 import { calculateRiskScore, generateRiskHistory } from '../../utils/riskCalculator';
 import { formatCurrency, formatPercent, getChangeColor, formatTimeAgo } from '../../utils/formatters';
-import { CHART_COLORS, MAP_CONFIG } from '../../utils/constants';
+import { CHART_COLORS, MAP_CONFIG, REFRESH_INTERVALS } from '../../utils/constants';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import 'leaflet/dist/leaflet.css';
 import './Overview.css';
 
@@ -22,7 +23,14 @@ function ChangeIcon({ value }) {
     return <Minus size={14} />;
 }
 
-function MiniPriceCard({ label, icon: Icon, price, changePercent, color }) {
+function MiniPriceCard({ label, icon: Icon, price, changePercent, color, loading }) {
+    if (loading) {
+        return (
+            <div className="mini-card card">
+                <div className="skeleton" style={{ width: '100%', height: 60, borderRadius: 8 }} />
+            </div>
+        );
+    }
     return (
         <div className="mini-card card">
             <div className="mini-card__top">
@@ -41,17 +49,32 @@ function MiniPriceCard({ label, icon: Icon, price, changePercent, color }) {
 }
 
 export default function Overview() {
-    const snapshot = useMemo(() => getMockPriceSnapshot(), []);
-    const oilData = useMemo(() => getMockOilData(), []);
-    const goldData = useMemo(() => getMockGoldData(), []);
-    const news = useMemo(() => getMockNews().slice(0, 5), []);
+    // Real data hooks
+    const fetchSnapshot = useCallback(() => fetchPriceSnapshot(), []);
+    const fetchNewsFn = useCallback(() => fetchNews('all'), []);
+
+    const { data: snapshot, loading: priceLoading } = useAutoRefresh(fetchSnapshot, REFRESH_INTERVALS.FOREX);
+    const { data: newsData, loading: newsLoading } = useAutoRefresh(fetchNewsFn, REFRESH_INTERVALS.NEWS);
+
+    const news = (newsData || []).slice(0, 5);
+    const oilData = useMemo(() => getOilData(), []);
+    const goldData = useMemo(() => getGoldData(), []);
     const events = useMemo(() => getMockConflictEvents(), []);
     const zones = useMemo(() => getConflictZones(), []);
     const riskHistory = useMemo(() => generateRiskHistory(14), []);
-    const risk = useMemo(() => calculateRiskScore({
-        conflictEvents: 87, oilChange: -2.3, goldChange: 1.5,
-        negativeNewsPercent: 65, breakingNewsCount: 12,
-    }), []);
+
+    // Calculate risk from actual data
+    const risk = useMemo(() => {
+        const negCount = news.filter(n => n.sentiment === 'negative').length;
+        const negPercent = news.length > 0 ? (negCount / news.length) * 100 : 50;
+        return calculateRiskScore({
+            conflictEvents: events.length * 6,
+            oilChange: snapshot?.oil?.wti?.changePercent || -1.5,
+            goldChange: snapshot?.gold?.changePercent || 0.8,
+            negativeNewsPercent: negPercent,
+            breakingNewsCount: news.length,
+        });
+    }, [snapshot, news, events]);
 
     return (
         <div className="overview fade-in">
@@ -66,6 +89,9 @@ export default function Overview() {
                         </div>
                     </div>
                 </div>
+                <div className="risk-banner__badges">
+                    {snapshot?.isRealForex && <span className="badge badge-green"><Wifi size={10} /> Live Forex</span>}
+                </div>
                 <div className="risk-banner__chart">
                     <ResponsiveContainer width="100%" height={50}>
                         <AreaChart data={riskHistory.slice(-14)}>
@@ -77,19 +103,22 @@ export default function Overview() {
 
             {/* Price Cards Row */}
             <div className="overview__prices">
-                <MiniPriceCard label="WTI Crude" icon={Droplets} price={snapshot.oil.wti.price} changePercent={snapshot.oil.wti.changePercent} color={CHART_COLORS.blue} />
-                <MiniPriceCard label="Brent Crude" icon={Droplets} price={snapshot.oil.brent.price} changePercent={snapshot.oil.brent.changePercent} color={CHART_COLORS.cyan} />
-                <MiniPriceCard label="Gold XAU" icon={Gem} price={snapshot.gold.price} changePercent={snapshot.gold.changePercent} color={CHART_COLORS.gold} />
-                <MiniPriceCard label="USD/RUB" icon={TrendingUp} price={snapshot.forex[0].value} changePercent={snapshot.forex[0].changePercent} color={CHART_COLORS.red} />
+                <MiniPriceCard label="WTI Crude" icon={Droplets} loading={priceLoading}
+                    price={snapshot?.oil?.wti?.price} changePercent={snapshot?.oil?.wti?.changePercent} color={CHART_COLORS.blue} />
+                <MiniPriceCard label="Brent Crude" icon={Droplets} loading={priceLoading}
+                    price={snapshot?.oil?.brent?.price} changePercent={snapshot?.oil?.brent?.changePercent} color={CHART_COLORS.cyan} />
+                <MiniPriceCard label="Gold XAU" icon={Gem} loading={priceLoading}
+                    price={snapshot?.gold?.price} changePercent={snapshot?.gold?.changePercent} color={CHART_COLORS.gold} />
+                <MiniPriceCard label="USD/RUB" icon={TrendingUp} loading={priceLoading}
+                    price={snapshot?.forex?.[0]?.value} changePercent={snapshot?.forex?.[0]?.changePercent} color={CHART_COLORS.red} />
             </div>
 
-            {/* Main Grid: Charts + News + Map */}
+            {/* Main Grid */}
             <div className="overview__grid">
                 {/* Oil Chart */}
                 <div className="overview__chart card">
                     <h3 className="section-title">
-                        <Droplets size={14} style={{ color: CHART_COLORS.blue }} />
-                        Oil Price Trend
+                        <Droplets size={14} style={{ color: CHART_COLORS.blue }} /> Oil Price Trend
                     </h3>
                     <ResponsiveContainer width="100%" height={200}>
                         <AreaChart data={oilData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
@@ -111,8 +140,7 @@ export default function Overview() {
                 {/* Gold Chart */}
                 <div className="overview__chart card">
                     <h3 className="section-title">
-                        <Gem size={14} style={{ color: CHART_COLORS.gold }} />
-                        Gold Price Trend
+                        <Gem size={14} style={{ color: CHART_COLORS.gold }} /> Gold Price Trend
                     </h3>
                     <ResponsiveContainer width="100%" height={200}>
                         <AreaChart data={goldData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
@@ -134,20 +162,12 @@ export default function Overview() {
                 {/* Mini Map */}
                 <div className="overview__map card">
                     <h3 className="section-title">
-                        <MapPin size={14} style={{ color: CHART_COLORS.red }} />
-                        Active Conflict Zones
+                        <MapPin size={14} style={{ color: CHART_COLORS.red }} /> Active Conflict Zones
                     </h3>
                     <div className="overview__map-container">
-                        <MapContainer
-                            center={MAP_CONFIG.center}
-                            zoom={2}
-                            minZoom={2}
-                            maxZoom={6}
+                        <MapContainer center={MAP_CONFIG.center} zoom={2} minZoom={2} maxZoom={6}
                             style={{ height: '100%', width: '100%', borderRadius: '8px' }}
-                            scrollWheelZoom={false}
-                            dragging={false}
-                            zoomControl={false}
-                        >
+                            scrollWheelZoom={false} dragging={false} zoomControl={false}>
                             <TileLayer url={MAP_CONFIG.tileUrl} />
                             {zones.map(z => (
                                 <Rectangle key={z.id} bounds={z.bounds}
@@ -169,24 +189,35 @@ export default function Overview() {
                 {/* Latest News */}
                 <div className="overview__news card">
                     <h3 className="section-title">
-                        <Newspaper size={14} style={{ color: CHART_COLORS.blue }} />
-                        Latest Headlines
+                        <Newspaper size={14} style={{ color: CHART_COLORS.blue }} /> Latest Headlines
                     </h3>
                     <div className="overview__news-list">
-                        {news.map(article => (
-                            <div key={article.id} className="overview__news-item">
-                                <div className="overview__news-badge" data-sentiment={article.sentiment} />
-                                <div className="overview__news-content">
-                                    <h4 className="overview__news-title">{article.title}</h4>
-                                    <div className="overview__news-meta">
-                                        <span className="overview__news-source">{article.source}</span>
-                                        <span className="overview__news-time">
-                                            <Clock size={10} /> {formatTimeAgo(article.publishedAt)}
-                                        </span>
+                        {newsLoading ? (
+                            [1, 2, 3, 4, 5].map(i => (
+                                <div key={i} className="overview__news-item">
+                                    <div className="skeleton" style={{ width: 4, height: 40, borderRadius: 4 }} />
+                                    <div style={{ flex: 1 }}>
+                                        <div className="skeleton" style={{ width: '90%', height: 14, marginBottom: 6 }} />
+                                        <div className="skeleton" style={{ width: '50%', height: 10 }} />
                                     </div>
                                 </div>
-                            </div>
-                        ))}
+                            ))
+                        ) : (
+                            news.map(article => (
+                                <div key={article.id} className="overview__news-item">
+                                    <div className="overview__news-badge" data-sentiment={article.sentiment} />
+                                    <div className="overview__news-content">
+                                        <h4 className="overview__news-title">{article.title}</h4>
+                                        <div className="overview__news-meta">
+                                            <span className="overview__news-source">{article.source}</span>
+                                            <span className="overview__news-time">
+                                                <Clock size={10} /> {formatTimeAgo(article.publishedAt)}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        )}
                     </div>
                 </div>
             </div>

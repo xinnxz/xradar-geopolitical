@@ -1,16 +1,75 @@
-# React + Vite
+# 🌍 XRadar — Live Geopolitical & Market Impact Dashboard
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+![XRadar Dashboard](https://img.shields.io/badge/Status-Live-green?style=flat-square) ![React](https://img.shields.io/badge/React-18-blue?style=flat-square&logo=react) ![Vite](https://img.shields.io/badge/Vite-7-purple?style=flat-square&logo=vite) ![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)
 
-Currently, two official plugins are available:
+Real-time dashboard yang memvisualisasikan dampak konflik geopolitik terhadap pasar keuangan global. Menampilkan data forex live, grafik komoditas, peta zona konflik interaktif, feed berita, dan indeks risiko geopolitik.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## ✨ Fitur
 
-## React Compiler
+- 📊 **Market Data** — Grafik harga minyak (WTI/Brent), emas, dan forex real-time
+- 📰 **News Feed** — Berita geopolitik terkini dengan analisis sentimen
+- 🗺️ **Conflict Map** — Peta interaktif zona konflik dan pembatasan penerbangan
+- 📈 **Risk Index** — Indeks risiko geopolitik global dengan breakdown faktor
+- 🔄 **Auto-refresh** — Data ter-update otomatis setiap 5-15 menit
+- 🌙 **Dark Mode** — Desain premium dark theme
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 🛠️ Tech Stack
 
-## Expanding the ESLint configuration
+| Layer | Technology |
+|---|---|
+| Build Tool | Vite 7 |
+| UI Framework | React 18 |
+| Charts | Recharts |
+| Maps | Leaflet.js + React-Leaflet |
+| Icons | Lucide React |
+| Styling | Vanilla CSS (Dark Theme) |
+| Deploy | Vercel |
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## 🚀 Quick Start
+
+```bash
+# Clone repo
+git clone https://github.com/YOUR_USERNAME/xradar-geopolitical.git
+cd xradar-geopolitical
+
+# Install dependencies
+npm install
+
+# (Optional) Set API keys
+cp .env.example .env
+# Edit .env and add your GNews API key
+
+# Run dev server
+npm run dev
+```
+
+Buka `http://localhost:5173` di browser.
+
+## 🔑 API Keys
+
+| API | Required? | Free Tier | Sign Up |
+|---|---|---|---|
+| Frankfurter (Forex) | ❌ No | Unlimited | Tidak perlu |
+| GNews (News) | Optional | 100 req/day | [gnews.io](https://gnews.io/register) |
+
+> **Note:** Dashboard berfungsi tanpa API key (menggunakan mock data). Tambahkan GNews key di `.env` untuk berita real-time.
+
+## 📁 Project Structure
+
+```
+src/
+├── components/
+│   ├── layout/      # Sidebar, Header
+│   ├── overview/    # Dashboard utama
+│   ├── market/      # Grafik harga & forex
+│   ├── news/        # Feed berita
+│   ├── map/         # Peta konflik
+│   └── risk/        # Indeks risiko
+├── services/        # API calls & caching
+├── hooks/           # Custom hooks (auto-refresh)
+└── utils/           # Formatters, constants, risk calculator
+```
+
+## 📄 License
+
+MIT License — Free to use and modify.

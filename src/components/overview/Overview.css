@@ -13,7 +13,12 @@
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
-  gap: var(--space-lg);
+  gap: var(--space-md);
+}
+
+.risk-banner__badges {
+  display: flex;
+  gap: var(--space-sm);
 }
 
 .risk-banner__left {

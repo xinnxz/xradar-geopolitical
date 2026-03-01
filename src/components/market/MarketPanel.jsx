@@ -1,11 +1,12 @@
-import { useMemo } from 'react';
-import { TrendingUp, TrendingDown, Minus, Droplets, Gem } from 'lucide-react';
+import { useMemo, useCallback } from 'react';
+import { TrendingUp, TrendingDown, Minus, Droplets, Gem, RefreshCw, Wifi } from 'lucide-react';
 import {
     AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid
 } from 'recharts';
-import { getMockOilData, getMockGoldData, getMockPriceSnapshot } from '../../services/marketService';
+import { fetchPriceSnapshot, getOilData, getGoldData, fetchForexHistory } from '../../services/marketService';
 import { formatCurrency, formatPercent, getChangeColor } from '../../utils/formatters';
-import { CHART_COLORS } from '../../utils/constants';
+import { CHART_COLORS, REFRESH_INTERVALS } from '../../utils/constants';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import './MarketPanel.css';
 
 function ChangeIcon({ value }) {
@@ -14,7 +15,16 @@ function ChangeIcon({ value }) {
     return <Minus size={14} />;
 }
 
-function PriceCard({ label, icon: Icon, price, change, changePercent, color }) {
+function PriceCard({ label, icon: Icon, price, change, changePercent, color, loading }) {
+    if (loading) {
+        return (
+            <div className="price-card card">
+                <div className="price-card__header"><div className="skeleton" style={{ width: 120, height: 18 }} /></div>
+                <div className="skeleton" style={{ width: 160, height: 32, marginBottom: 8 }} />
+                <div className="skeleton" style={{ width: 100, height: 16 }} />
+            </div>
+        );
+    }
     return (
         <div className="price-card card">
             <div className="price-card__header">
@@ -40,7 +50,9 @@ function ForexRow({ pair, value, change, changePercent, flag }) {
                 <span className="forex-row__flag">{flag}</span>
                 <span className="forex-row__name">{pair}</span>
             </div>
-            <div className="forex-row__value">{value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</div>
+            <div className="forex-row__value">
+                {value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+            </div>
             <div className="forex-row__change" style={{ color: getChangeColor(changePercent) }}>
                 <ChangeIcon value={changePercent} />
                 <span>{formatPercent(changePercent)}</span>
@@ -64,37 +76,52 @@ function ChartTooltip({ active, payload, label }) {
 }
 
 export default function MarketPanel() {
-    const snapshot = useMemo(() => getMockPriceSnapshot(), []);
-    const oilData = useMemo(() => getMockOilData(), []);
-    const goldData = useMemo(() => getMockGoldData(), []);
+    // Fetch real data via auto-refresh hook
+    const fetchSnapshot = useCallback(() => fetchPriceSnapshot(), []);
+    const { data: snapshot, loading, lastUpdated, refresh } = useAutoRefresh(
+        fetchSnapshot, REFRESH_INTERVALS.FOREX
+    );
+
+    const oilData = useMemo(() => getOilData(), []);
+    const goldData = useMemo(() => getGoldData(), []);
 
     return (
         <div className="market-panel fade-in">
+            {/* Status bar */}
+            <div className="market-panel__status">
+                <div className="market-panel__status-left">
+                    {snapshot?.isRealForex && (
+                        <span className="badge badge-green"><Wifi size={10} /> Forex: Live Data</span>
+                    )}
+                    {!snapshot?.isRealForex && !loading && (
+                        <span className="badge badge-gold">Forex: Offline</span>
+                    )}
+                    <span className="badge badge-blue">Commodities: Simulated</span>
+                </div>
+                <button className="market-panel__refresh" onClick={refresh} title="Refresh data">
+                    <RefreshCw size={14} className={loading ? 'spinning' : ''} />
+                    {lastUpdated && (
+                        <span>Updated {lastUpdated.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
+                    )}
+                </button>
+            </div>
+
             {/* Price Cards */}
             <div className="market-panel__cards">
                 <PriceCard
-                    label="WTI Crude"
-                    icon={Droplets}
-                    price={snapshot.oil.wti.price}
-                    change={snapshot.oil.wti.change}
-                    changePercent={snapshot.oil.wti.changePercent}
-                    color={CHART_COLORS.blue}
+                    label="WTI Crude" icon={Droplets} loading={loading}
+                    price={snapshot?.oil?.wti?.price} change={snapshot?.oil?.wti?.change}
+                    changePercent={snapshot?.oil?.wti?.changePercent} color={CHART_COLORS.blue}
                 />
                 <PriceCard
-                    label="Brent Crude"
-                    icon={Droplets}
-                    price={snapshot.oil.brent.price}
-                    change={snapshot.oil.brent.change}
-                    changePercent={snapshot.oil.brent.changePercent}
-                    color={CHART_COLORS.cyan}
+                    label="Brent Crude" icon={Droplets} loading={loading}
+                    price={snapshot?.oil?.brent?.price} change={snapshot?.oil?.brent?.change}
+                    changePercent={snapshot?.oil?.brent?.changePercent} color={CHART_COLORS.cyan}
                 />
                 <PriceCard
-                    label="Gold (XAU)"
-                    icon={Gem}
-                    price={snapshot.gold.price}
-                    change={snapshot.gold.change}
-                    changePercent={snapshot.gold.changePercent}
-                    color={CHART_COLORS.gold}
+                    label="Gold (XAU)" icon={Gem} loading={loading}
+                    price={snapshot?.gold?.price} change={snapshot?.gold?.change}
+                    changePercent={snapshot?.gold?.changePercent} color={CHART_COLORS.gold}
                 />
             </div>
 
@@ -150,19 +177,30 @@ export default function MarketPanel() {
                 </div>
             </div>
 
-            {/* Forex Table */}
+            {/* Forex Table - REAL DATA */}
             <div className="forex-table card">
                 <h3 className="chart-container__title" style={{ marginBottom: '12px' }}>
                     💱 Foreign Exchange Rates (vs USD)
+                    {snapshot?.isRealForex && <span className="badge badge-green" style={{ marginLeft: 8, fontSize: '0.65rem' }}>LIVE</span>}
                 </h3>
-                <div className="forex-table__header">
-                    <span>Pair</span>
-                    <span>Rate</span>
-                    <span>Change</span>
-                </div>
-                {snapshot.forex.map((fx, i) => (
-                    <ForexRow key={i} {...fx} />
-                ))}
+                {loading ? (
+                    <div style={{ padding: '16px' }}>
+                        {[1, 2, 3, 4, 5, 6].map(i => (
+                            <div key={i} className="skeleton" style={{ height: 36, marginBottom: 8, borderRadius: 8 }} />
+                        ))}
+                    </div>
+                ) : (
+                    <>
+                        <div className="forex-table__header">
+                            <span>Pair</span>
+                            <span>Rate</span>
+                            <span>Change</span>
+                        </div>
+                        {snapshot?.forex?.map((fx, i) => (
+                            <ForexRow key={i} {...fx} />
+                        ))}
+                    </>
+                )}
             </div>
         </div>
     );

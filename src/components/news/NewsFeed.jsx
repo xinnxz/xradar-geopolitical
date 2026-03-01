@@ -1,8 +1,9 @@
-import { useState, useMemo } from 'react';
-import { ExternalLink, Clock, AlertTriangle } from 'lucide-react';
-import { getMockNews } from '../../services/newsService';
+import { useState, useCallback } from 'react';
+import { ExternalLink, Clock, AlertTriangle, RefreshCw, Wifi } from 'lucide-react';
+import { fetchNews } from '../../services/newsService';
 import { formatTimeAgo, getSentimentBadge } from '../../utils/formatters';
-import { NEWS_CATEGORIES } from '../../utils/constants';
+import { NEWS_CATEGORIES, API_KEYS, REFRESH_INTERVALS } from '../../utils/constants';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import './NewsFeed.css';
 
 function SentimentBadge({ sentiment }) {
@@ -41,6 +42,9 @@ function NewsCard({ article, index }) {
                     <ExternalLink size={14} />
                 </a>
             </div>
+            {article.imageUrl && (
+                <img src={article.imageUrl} alt="" className="news-card__image" loading="lazy" />
+            )}
             <h3 className="news-card__title">{article.title}</h3>
             <p className="news-card__desc">{article.description}</p>
             <div className="news-card__footer">
@@ -53,34 +57,70 @@ function NewsCard({ article, index }) {
     );
 }
 
+function SkeletonCard() {
+    return (
+        <div className="news-card card">
+            <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                <div className="skeleton" style={{ width: 60, height: 22, borderRadius: 999 }} />
+                <div className="skeleton" style={{ width: 80, height: 22, borderRadius: 999 }} />
+            </div>
+            <div className="skeleton" style={{ width: '90%', height: 18, marginBottom: 8 }} />
+            <div className="skeleton" style={{ width: '70%', height: 14, marginBottom: 8 }} />
+            <div className="skeleton" style={{ width: '60%', height: 14 }} />
+        </div>
+    );
+}
+
 export default function NewsFeed() {
     const [activeCategory, setActiveCategory] = useState('all');
-    const allNews = useMemo(() => getMockNews(), []);
 
-    const filtered = useMemo(() => {
-        if (activeCategory === 'all') return allNews;
-        return allNews.filter(n => n.category === activeCategory);
-    }, [allNews, activeCategory]);
+    // Fetch news via auto-refresh
+    const fetchFn = useCallback(() => fetchNews(activeCategory), [activeCategory]);
+    const { data: allNews, loading, lastUpdated, refresh } = useAutoRefresh(
+        fetchFn, REFRESH_INTERVALS.NEWS, [activeCategory]
+    );
 
-    const negativeCount = allNews.filter(n => n.sentiment === 'negative').length;
+    const news = allNews || [];
+    const negativeCount = news.filter(n => n.sentiment === 'negative').length;
+    const positiveCount = news.filter(n => n.sentiment === 'positive').length;
+    const isLive = !!API_KEYS.GNEWS;
 
     return (
         <div className="news-feed fade-in">
-            {/* Breaking news banner */}
-            <div className="breaking-banner">
-                <div className="breaking-banner__badge">
-                    <AlertTriangle size={14} />
-                    BREAKING
+            {/* Status bar */}
+            <div className="market-panel__status">
+                <div className="market-panel__status-left">
+                    {isLive ? (
+                        <span className="badge badge-green"><Wifi size={10} /> GNews: Live</span>
+                    ) : (
+                        <span className="badge badge-gold">News: Mock Data (set VITE_GNEWS_KEY for live)</span>
+                    )}
                 </div>
-                <div className="breaking-banner__text">
-                    {allNews[0]?.title}
-                </div>
+                <button className="market-panel__refresh" onClick={refresh}>
+                    <RefreshCw size={14} className={loading ? 'spinning' : ''} />
+                    {lastUpdated && (
+                        <span>Updated {lastUpdated.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
+                    )}
+                </button>
             </div>
+
+            {/* Breaking news banner */}
+            {news.length > 0 && (
+                <div className="breaking-banner">
+                    <div className="breaking-banner__badge">
+                        <AlertTriangle size={14} />
+                        BREAKING
+                    </div>
+                    <div className="breaking-banner__text">
+                        {news[0]?.title}
+                    </div>
+                </div>
+            )}
 
             {/* Stats */}
             <div className="news-feed__stats">
                 <div className="news-stat">
-                    <span className="news-stat__value">{allNews.length}</span>
+                    <span className="news-stat__value">{news.length}</span>
                     <span className="news-stat__label">Total Articles</span>
                 </div>
                 <div className="news-stat">
@@ -88,7 +128,7 @@ export default function NewsFeed() {
                     <span className="news-stat__label">Negative Sentiment</span>
                 </div>
                 <div className="news-stat">
-                    <span className="news-stat__value" style={{ color: 'var(--accent-green)' }}>{allNews.filter(n => n.sentiment === 'positive').length}</span>
+                    <span className="news-stat__value" style={{ color: 'var(--accent-green)' }}>{positiveCount}</span>
                     <span className="news-stat__label">Positive Sentiment</span>
                 </div>
             </div>
@@ -102,22 +142,24 @@ export default function NewsFeed() {
                         onClick={() => setActiveCategory(cat.id)}
                     >
                         {cat.label}
-                        {cat.id !== 'all' && (
-                            <span className="filter-btn__count">
-                                {allNews.filter(n => n.category === cat.id).length}
-                            </span>
-                        )}
                     </button>
                 ))}
             </div>
 
             {/* News list */}
             <div className="news-feed__list">
-                {filtered.map((article, i) => (
-                    <NewsCard key={article.id} article={article} index={i} />
-                ))}
-                {filtered.length === 0 && (
-                    <div className="news-feed__empty">No articles in this category</div>
+                {loading ? (
+                    <>
+                        <SkeletonCard />
+                        <SkeletonCard />
+                        <SkeletonCard />
+                    </>
+                ) : news.length > 0 ? (
+                    news.map((article, i) => (
+                        <NewsCard key={article.id} article={article} index={i} />
+                    ))
+                ) : (
+                    <div className="news-feed__empty">No articles found</div>
                 )}
             </div>
         </div>
