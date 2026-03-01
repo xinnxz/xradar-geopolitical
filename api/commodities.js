@@ -2,11 +2,12 @@
 // Vercel Serverless Function: Commodities Proxy
 // Route: /api/commodities
 // Fetches gold + oil prices from Alpha Vantage (server-side)
+// Now includes historical data for charts!
 // ========================================
 
-// Server-side cache (persists between warm invocations)
+// Server-side cache
 let cache = {};
-const CACHE_TTL = 60 * 60 * 1000; // 1 hour cache (hemat kuota: 25 req/day)
+const CACHE_TTL = 60 * 60 * 1000; // 1 hour
 
 function getCached(key) {
   const entry = cache[key];
@@ -19,84 +20,121 @@ function setMemoCache(key, data) {
 }
 
 /**
- * Gold price via GOLD_SILVER_SPOT endpoint
- * Response format: { nominal: "XAUUSD", timestamp: "...", price: "5278.73" }
+ * Parse valid data points, skip dots "."
  */
-async function fetchGoldPrice(apiKey) {
-  const cached = getCached('gold');
+function parseDataPoints(points, limit = 90) {
+  if (!points?.length) return [];
+  const valid = [];
+  for (const p of points) {
+    if (p.value !== '.' && !isNaN(parseFloat(p.value))) {
+      valid.push({
+        date: p.date,
+        value: parseFloat(p.value),
+      });
+    }
+    if (valid.length >= limit) break;
+  }
+  return valid.reverse(); // Oldest first for charts
+}
+
+/**
+ * Gold spot price
+ */
+async function fetchGoldSpot(apiKey) {
+  const cached = getCached('gold_spot');
   if (cached) return cached;
 
   const url = `https://www.alphavantage.co/query?function=GOLD_SILVER_SPOT&symbol=GOLD&apikey=${apiKey}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Gold API error: ${res.status}`);
   const data = await res.json();
-
   if (data['Error Message'] || data['Note'] || data['Information']) {
     throw new Error(data['Error Message'] || data['Note'] || data['Information']);
   }
 
   const price = parseFloat(data.price);
-  if (isNaN(price)) throw new Error('Invalid gold price data');
+  if (isNaN(price)) throw new Error('Invalid gold price');
 
-  const result = {
-    price,
-    change: 0, // Spot doesn't give previous close
-    changePercent: 0,
-    date: data.timestamp,
-    unit: 'USD/oz',
-  };
-
-  setMemoCache('gold', result);
+  const result = { price, date: data.timestamp, unit: 'USD/oz' };
+  setMemoCache('gold_spot', result);
   return result;
 }
 
 /**
- * Oil price via WTI or BRENT endpoint
- * Response format: { name, interval, unit, data: [{date, value}, ...] }
- * Data is sorted newest first
+ * Gold historical daily prices
  */
-async function fetchOilPrice(type, apiKey) {
-  const cached = getCached(type);
+async function fetchGoldHistory(apiKey) {
+  const cached = getCached('gold_history');
+  if (cached) return cached;
+
+  const url = `https://www.alphavantage.co/query?function=GOLD_SILVER_HISTORY&symbol=GOLD&interval=daily&apikey=${apiKey}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Gold history error: ${res.status}`);
+  const data = await res.json();
+  if (data['Error Message'] || data['Note'] || data['Information']) {
+    throw new Error(data['Error Message'] || data['Note'] || data['Information']);
+  }
+
+  const points = (data?.data || []).slice(0, 90);
+  const history = points
+    .filter(p => p.price && !isNaN(parseFloat(p.price)))
+    .map(p => ({ date: p.date, value: parseFloat(p.price) }))
+    .reverse(); // Oldest first
+
+  setMemoCache('gold_history', history);
+  return history;
+}
+
+/**
+ * Oil price (WTI or BRENT) — spot + history
+ */
+async function fetchOilData(type, apiKey) {
+  const cached = getCached(`oil_${type}`);
   if (cached) return cached;
 
   const fn = type === 'wti' ? 'WTI' : 'BRENT';
   const url = `https://www.alphavantage.co/query?function=${fn}&interval=daily&apikey=${apiKey}`;
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`Oil ${type} API error: ${res.status}`);
+  if (!res.ok) throw new Error(`Oil ${type} error: ${res.status}`);
   const data = await res.json();
-
   if (data['Error Message'] || data['Note'] || data['Information']) {
     throw new Error(data['Error Message'] || data['Note'] || data['Information']);
   }
 
   const points = data?.data;
-  if (!points?.length) throw new Error(`No ${type} data points`);
+  if (!points?.length) throw new Error(`No ${type} data`);
 
-  // Find latest valid data point (skip dots ".")
+  // Find latest + previous for spot
   let latest = null, previous = null;
-  for (const point of points) {
-    if (point.value !== '.' && !isNaN(parseFloat(point.value))) {
-      if (!latest) latest = point;
-      else if (!previous) { previous = point; break; }
+  for (const p of points) {
+    if (p.value !== '.' && !isNaN(parseFloat(p.value))) {
+      if (!latest) latest = p;
+      else if (!previous) { previous = p; break; }
     }
   }
 
-  if (!latest) throw new Error(`No valid ${type} price data`);
+  if (!latest) throw new Error(`No valid ${type} data`);
 
   const price = parseFloat(latest.value);
   const prevPrice = previous ? parseFloat(previous.value) : price;
   const change = +(price - prevPrice).toFixed(2);
   const changePercent = prevPrice ? +((change / prevPrice) * 100).toFixed(2) : 0;
 
+  // Historical 90 days for chart
+  const history = parseDataPoints(points, 90);
+
   const result = {
-    price,
-    change,
-    changePercent,
-    date: latest.date,
-    unit: data.unit || 'USD/barrel',
+    spot: {
+      price,
+      change,
+      changePercent,
+      date: latest.date,
+      unit: data.unit || 'USD/barrel',
+    },
+    history,
   };
 
-  setMemoCache(type, result);
+  setMemoCache(`oil_${type}`, result);
   return result;
 }
 
@@ -116,30 +154,35 @@ export default async function handler(req, res) {
     const { type = 'all' } = req.query;
     const result = {};
 
-    // Fetch gold
     if (type === 'all' || type === 'gold') {
       try {
-        result.gold = await fetchGoldPrice(apiKey);
+        const [spot, history] = await Promise.all([
+          fetchGoldSpot(apiKey),
+          fetchGoldHistory(apiKey),
+        ]);
+        result.gold = { ...spot, history };
       } catch (e) {
         result.gold = null;
         result.goldError = e.message;
       }
     }
 
-    // Fetch WTI Crude Oil
     if (type === 'all' || type === 'wti') {
       try {
-        result.wti = await fetchOilPrice('wti', apiKey);
+        const data = await fetchOilData('wti', apiKey);
+        result.wti = data.spot;
+        result.wtiHistory = data.history;
       } catch (e) {
         result.wti = null;
         result.wtiError = e.message;
       }
     }
 
-    // Fetch Brent Crude Oil
     if (type === 'all' || type === 'brent') {
       try {
-        result.brent = await fetchOilPrice('brent', apiKey);
+        const data = await fetchOilData('brent', apiKey);
+        result.brent = data.spot;
+        result.brentHistory = data.history;
       } catch (e) {
         result.brent = null;
         result.brentError = e.message;

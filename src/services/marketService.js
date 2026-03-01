@@ -120,7 +120,23 @@ export async function fetchGoldPrice() {
 
   const proxy = await fetchCommoditiesFromProxy();
   if (proxy?.gold) {
-    const result = { ...proxy.gold, isReal: true };
+    const result = {
+      price: proxy.gold.price,
+      change: 0,
+      changePercent: 0,
+      date: proxy.gold.date,
+      history: proxy.gold.history || [],
+      isReal: true,
+    };
+
+    // Calculate change from history
+    if (result.history.length >= 2) {
+      const last = result.history[result.history.length - 1]?.value || result.price;
+      const prev = result.history[result.history.length - 2]?.value || last;
+      result.change = +(last - prev).toFixed(2);
+      result.changePercent = prev ? +((result.change / prev) * 100).toFixed(2) : 0;
+    }
+
     setCache(cacheKey, result, 30 * 60 * 1000);
     return result;
   }
@@ -132,7 +148,7 @@ function getFallbackGold() {
   const seed = new Date().toISOString().split('T')[0];
   const hash = Array.from(seed).reduce((a, c) => a + c.charCodeAt(0), 0);
   const noise = (Math.sin(hash * 2.7) * 100) - 50;
-  return { price: +(5200 + noise).toFixed(2), change: +noise.toFixed(2), changePercent: +((noise / 5200) * 100).toFixed(2), isReal: false };
+  return { price: +(5200 + noise).toFixed(2), change: +noise.toFixed(2), changePercent: +((noise / 5200) * 100).toFixed(2), history: [], isReal: false };
 }
 
 /**
@@ -145,9 +161,10 @@ export async function fetchOilPrice() {
 
   const proxy = await fetchCommoditiesFromProxy();
   if (proxy?.wti || proxy?.brent) {
+    const fallback = getFallbackOil();
     const result = {
-      wti: proxy.wti || getFallbackOil().wti,
-      brent: proxy.brent || getFallbackOil().brent,
+      wti: proxy.wti ? { ...proxy.wti, history: proxy.wtiHistory || [] } : fallback.wti,
+      brent: proxy.brent ? { ...proxy.brent, history: proxy.brentHistory || [] } : fallback.brent,
       isReal: !!(proxy.wti || proxy.brent),
     };
     setCache(cacheKey, result, 30 * 60 * 1000);
@@ -163,8 +180,8 @@ function getFallbackOil() {
   const n1 = Math.sin(hash * 1.1) * 3;
   const n2 = Math.sin(hash * 1.3) * 3;
   return {
-    wti: { price: +(67 + n1).toFixed(2), change: +n1.toFixed(2), changePercent: +((n1 / 67) * 100).toFixed(2) },
-    brent: { price: +(72 + n2).toFixed(2), change: +n2.toFixed(2), changePercent: +((n2 / 72) * 100).toFixed(2) },
+    wti: { price: +(67 + n1).toFixed(2), change: +n1.toFixed(2), changePercent: +((n1 / 67) * 100).toFixed(2), history: [] },
+    brent: { price: +(72 + n2).toFixed(2), change: +n2.toFixed(2), changePercent: +((n2 / 72) * 100).toFixed(2), history: [] },
     isReal: false,
   };
 }
