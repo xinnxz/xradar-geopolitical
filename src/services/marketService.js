@@ -89,7 +89,7 @@ export async function fetchForexHistory(from = 'USD', to = 'EUR', days = 30) {
  * Di localhost: fallback ke simulated data
  */
 async function fetchCommoditiesFromProxy() {
-  const cacheKey = 'commodities_proxy';
+  const cacheKey = 'commodities_proxy_v2'; // Bumped: old cache lacked history
   const cached = getCache(cacheKey);
   if (cached) return cached;
 

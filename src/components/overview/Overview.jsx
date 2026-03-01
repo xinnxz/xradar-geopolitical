@@ -155,7 +155,7 @@ export default function Overview() {
                             />
                         ) : (
                             <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#5e6571', fontSize: '0.8rem' }}>
-                                {loading ? 'Loading...' : 'Deploy to Vercel for real data'}
+                                {loading ? 'Loading chart...' : 'Chart data loading — refresh in a moment'}
                             </div>
                         )}
                     </div>
