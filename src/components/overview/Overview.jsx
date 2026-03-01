@@ -5,14 +5,14 @@ import {
 import { MapContainer, TileLayer, Rectangle, CircleMarker } from 'react-leaflet';
 import {
     Droplets, Gem, TrendingUp, TrendingDown, Minus,
-    ShieldAlert, Newspaper, MapPin, Clock, Wifi
+    ShieldAlert, Newspaper, MapPin, Clock, Wifi, ExternalLink
 } from 'lucide-react';
 import { fetchPriceSnapshot, getOilData, getGoldData } from '../../services/marketService';
 import { fetchNews } from '../../services/newsService';
 import { getMockConflictEvents, getConflictZones } from '../../services/conflictService';
 import { calculateRiskScore, generateRiskHistory } from '../../utils/riskCalculator';
 import { formatCurrency, formatPercent, getChangeColor, formatTimeAgo } from '../../utils/formatters';
-import { CHART_COLORS, MAP_CONFIG, REFRESH_INTERVALS } from '../../utils/constants';
+import { CHART_COLORS, MAP_CONFIG, REFRESH_INTERVALS, EXTERNAL_LINKS } from '../../utils/constants';
 import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import 'leaflet/dist/leaflet.css';
 import './Overview.css';
@@ -23,7 +23,7 @@ function ChangeIcon({ value }) {
     return <Minus size={14} />;
 }
 
-function MiniPriceCard({ label, icon: Icon, price, changePercent, color, loading }) {
+function MiniPriceCard({ label, icon: Icon, price, changePercent, color, loading, href }) {
     if (loading) {
         return (
             <div className="mini-card card">
@@ -32,7 +32,7 @@ function MiniPriceCard({ label, icon: Icon, price, changePercent, color, loading
         );
     }
     return (
-        <div className="mini-card card">
+        <a href={href} target="_blank" rel="noopener noreferrer" className="mini-card card mini-card--clickable" title={`View ${label} on TradingView`}>
             <div className="mini-card__top">
                 <div className="mini-card__icon" style={{ background: `${color}20`, color }}>
                     <Icon size={16} />
@@ -43,8 +43,8 @@ function MiniPriceCard({ label, icon: Icon, price, changePercent, color, loading
                 </span>
             </div>
             <div className="mini-card__value">{formatCurrency(price)}</div>
-            <div className="mini-card__label">{label}</div>
-        </div>
+            <div className="mini-card__label">{label} <ExternalLink size={10} style={{ opacity: 0.4 }} /></div>
+        </a>
     );
 }
 
@@ -104,22 +104,27 @@ export default function Overview() {
             {/* Price Cards Row */}
             <div className="overview__prices">
                 <MiniPriceCard label="WTI Crude" icon={Droplets} loading={priceLoading}
-                    price={snapshot?.oil?.wti?.price} changePercent={snapshot?.oil?.wti?.changePercent} color={CHART_COLORS.blue} />
+                    price={snapshot?.oil?.wti?.price} changePercent={snapshot?.oil?.wti?.changePercent}
+                    color={CHART_COLORS.blue} href={EXTERNAL_LINKS.WTI} />
                 <MiniPriceCard label="Brent Crude" icon={Droplets} loading={priceLoading}
-                    price={snapshot?.oil?.brent?.price} changePercent={snapshot?.oil?.brent?.changePercent} color={CHART_COLORS.cyan} />
+                    price={snapshot?.oil?.brent?.price} changePercent={snapshot?.oil?.brent?.changePercent}
+                    color={CHART_COLORS.cyan} href={EXTERNAL_LINKS.BRENT} />
                 <MiniPriceCard label="Gold XAU" icon={Gem} loading={priceLoading}
-                    price={snapshot?.gold?.price} changePercent={snapshot?.gold?.changePercent} color={CHART_COLORS.gold} />
-                <MiniPriceCard label="USD/RUB" icon={TrendingUp} loading={priceLoading}
-                    price={snapshot?.forex?.[0]?.value} changePercent={snapshot?.forex?.[0]?.changePercent} color={CHART_COLORS.red} />
+                    price={snapshot?.gold?.price} changePercent={snapshot?.gold?.changePercent}
+                    color={CHART_COLORS.gold} href={EXTERNAL_LINKS.GOLD} />
+                <MiniPriceCard label="USD/EUR" icon={TrendingUp} loading={priceLoading}
+                    price={snapshot?.forex?.[0]?.value} changePercent={snapshot?.forex?.[0]?.changePercent}
+                    color={CHART_COLORS.red} href={EXTERNAL_LINKS.forexPair('USD', 'EUR')} />
             </div>
 
             {/* Main Grid */}
             <div className="overview__grid">
                 {/* Oil Chart */}
                 <div className="overview__chart card">
-                    <h3 className="section-title">
+                    <a href={EXTERNAL_LINKS.WTI} target="_blank" rel="noopener noreferrer" className="section-title section-title--link">
                         <Droplets size={14} style={{ color: CHART_COLORS.blue }} /> Oil Price Trend
-                    </h3>
+                        <ExternalLink size={10} className="chart-link-icon" />
+                    </a>
                     <ResponsiveContainer width="100%" height={200}>
                         <AreaChart data={oilData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
                             <defs>
@@ -139,9 +144,10 @@ export default function Overview() {
 
                 {/* Gold Chart */}
                 <div className="overview__chart card">
-                    <h3 className="section-title">
+                    <a href={EXTERNAL_LINKS.GOLD} target="_blank" rel="noopener noreferrer" className="section-title section-title--link">
                         <Gem size={14} style={{ color: CHART_COLORS.gold }} /> Gold Price Trend
-                    </h3>
+                        <ExternalLink size={10} className="chart-link-icon" />
+                    </a>
                     <ResponsiveContainer width="100%" height={200}>
                         <AreaChart data={goldData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
                             <defs>
@@ -204,7 +210,8 @@ export default function Overview() {
                             ))
                         ) : (
                             news.map(article => (
-                                <div key={article.id} className="overview__news-item">
+                                <a key={article.id} href={article.url} target="_blank" rel="noopener noreferrer"
+                                    className="overview__news-item overview__news-item--clickable">
                                     <div className="overview__news-badge" data-sentiment={article.sentiment} />
                                     <div className="overview__news-content">
                                         <h4 className="overview__news-title">{article.title}</h4>
@@ -215,7 +222,8 @@ export default function Overview() {
                                             </span>
                                         </div>
                                     </div>
-                                </div>
+                                    <ExternalLink size={12} className="overview__news-link" />
+                                </a>
                             ))
                         )}
                     </div>

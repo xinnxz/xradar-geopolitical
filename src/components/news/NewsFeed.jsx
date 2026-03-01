@@ -32,15 +32,14 @@ function CategoryBadge({ category }) {
 
 function NewsCard({ article, index }) {
     return (
-        <article className={`news-card card fade-in stagger-${Math.min(index + 1, 6)}`}>
+        <a href={article.url} target="_blank" rel="noopener noreferrer"
+            className={`news-card card news-card--clickable fade-in stagger-${Math.min(index + 1, 6)}`}>
             <div className="news-card__header">
                 <div className="news-card__badges">
                     <CategoryBadge category={article.category} />
                     <SentimentBadge sentiment={article.sentiment} />
                 </div>
-                <a href={article.url} target="_blank" rel="noopener noreferrer" className="news-card__link">
-                    <ExternalLink size={14} />
-                </a>
+                <ExternalLink size={14} className="news-card__link-icon" />
             </div>
             {article.imageUrl && (
                 <img src={article.imageUrl} alt="" className="news-card__image" loading="lazy" />
@@ -53,7 +52,7 @@ function NewsCard({ article, index }) {
                     <Clock size={12} /> {formatTimeAgo(article.publishedAt)}
                 </span>
             </div>
-        </article>
+        </a>
     );
 }
 
@@ -106,7 +105,7 @@ export default function NewsFeed() {
 
             {/* Breaking news banner */}
             {news.length > 0 && (
-                <div className="breaking-banner">
+                <a href={news[0]?.url} target="_blank" rel="noopener noreferrer" className="breaking-banner breaking-banner--clickable">
                     <div className="breaking-banner__badge">
                         <AlertTriangle size={14} />
                         BREAKING
@@ -114,7 +113,8 @@ export default function NewsFeed() {
                     <div className="breaking-banner__text">
                         {news[0]?.title}
                     </div>
-                </div>
+                    <ExternalLink size={14} className="breaking-banner__link" />
+                </a>
             )}
 
             {/* Stats */}

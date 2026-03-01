@@ -60,6 +60,31 @@
   padding: var(--space-lg);
 }
 
+.price-card--clickable {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
+}
+
+.price-card--clickable:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--accent-blue);
+}
+
+.price-card__external {
+  margin-left: auto;
+  opacity: 0;
+  color: var(--text-muted);
+  transition: opacity var(--transition-fast);
+}
+
+.price-card--clickable:hover .price-card__external {
+  opacity: 1;
+}
+
 .price-card__header {
   display: flex;
   align-items: center;
@@ -97,6 +122,46 @@
   font-family: var(--font-mono);
   font-size: 0.8rem;
   font-weight: 600;
+}
+
+/* Chart title link */
+.chart-container__title--link {
+  text-decoration: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.chart-container__title--link:hover {
+  color: var(--accent-blue);
+}
+
+.chart-link-icon {
+  opacity: 0;
+  margin-left: auto;
+  color: var(--text-muted);
+  transition: opacity var(--transition-fast);
+}
+
+.chart-container__title--link:hover .chart-link-icon {
+  opacity: 1;
+}
+
+/* Data source attribution */
+.data-source-link {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  opacity: 0.6;
+  transition: opacity var(--transition-fast), color var(--transition-fast);
+}
+
+.data-source-link:hover {
+  opacity: 1;
+  color: var(--accent-blue);
 }
 
 /* Charts */
@@ -217,12 +282,28 @@
   transition: background var(--transition-fast);
 }
 
+.forex-row--clickable {
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+
 .forex-row:last-child {
   border-bottom: none;
 }
 
 .forex-row:hover {
   background: var(--bg-elevated);
+}
+
+.forex-row__link-icon {
+  opacity: 0;
+  color: var(--text-muted);
+  transition: opacity var(--transition-fast);
+}
+
+.forex-row:hover .forex-row__link-icon {
+  opacity: 1;
 }
 
 .forex-row__pair {

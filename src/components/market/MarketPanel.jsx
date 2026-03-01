@@ -1,11 +1,11 @@
 import { useState, useMemo, useCallback } from 'react';
-import { TrendingUp, TrendingDown, Minus, Droplets, Gem, RefreshCw, Wifi, Search } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Droplets, Gem, RefreshCw, Wifi, Search, ExternalLink } from 'lucide-react';
 import {
     AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid
 } from 'recharts';
 import { fetchPriceSnapshot, getOilData, getGoldData } from '../../services/marketService';
 import { formatCurrency, formatPercent, getChangeColor } from '../../utils/formatters';
-import { CHART_COLORS, REFRESH_INTERVALS, FOREX_REGIONS } from '../../utils/constants';
+import { CHART_COLORS, REFRESH_INTERVALS, FOREX_REGIONS, EXTERNAL_LINKS } from '../../utils/constants';
 import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import './MarketPanel.css';
 
@@ -15,7 +15,7 @@ function ChangeIcon({ value }) {
     return <Minus size={14} />;
 }
 
-function PriceCard({ label, icon: Icon, price, change, changePercent, color, loading, live }) {
+function PriceCard({ label, icon: Icon, price, change, changePercent, color, loading, live, href }) {
     if (loading) {
         return (
             <div className="price-card card">
@@ -26,7 +26,7 @@ function PriceCard({ label, icon: Icon, price, change, changePercent, color, loa
         );
     }
     return (
-        <div className="price-card card">
+        <a href={href} target="_blank" rel="noopener noreferrer" className="price-card card price-card--clickable" title={`View ${label} on TradingView`}>
             <div className="price-card__header">
                 <div className="price-card__icon" style={{ background: `${color}20`, color }}>
                     <Icon size={18} />
@@ -35,6 +35,7 @@ function PriceCard({ label, icon: Icon, price, change, changePercent, color, loa
                     {label}
                     {live && <span className="badge badge-green" style={{ marginLeft: 6, fontSize: '0.55rem' }}>LIVE</span>}
                 </span>
+                <ExternalLink size={12} className="price-card__external" />
             </div>
             <div className="price-card__value">{formatCurrency(price)}</div>
             <div className="price-card__change" style={{ color: getChangeColor(changePercent) }}>
@@ -42,13 +43,14 @@ function PriceCard({ label, icon: Icon, price, change, changePercent, color, loa
                 <span>{formatCurrency(Math.abs(change))}</span>
                 <span>({formatPercent(changePercent)})</span>
             </div>
-        </div>
+        </a>
     );
 }
 
-function ForexRow({ pair, value, change, changePercent, flag, region }) {
+function ForexRow({ pair, value, change, changePercent, flag, region, from, to }) {
+    const href = EXTERNAL_LINKS.forexPair(from || 'USD', to || pair?.split('/')[1] || 'EUR');
     return (
-        <div className="forex-row">
+        <a href={href} target="_blank" rel="noopener noreferrer" className="forex-row forex-row--clickable" title={`View ${pair} on TradingView`}>
             <div className="forex-row__pair">
                 <span className="forex-row__flag">{flag}</span>
                 <span className="forex-row__name">{pair}</span>
@@ -60,8 +62,9 @@ function ForexRow({ pair, value, change, changePercent, flag, region }) {
             <div className="forex-row__change" style={{ color: getChangeColor(changePercent) }}>
                 <ChangeIcon value={changePercent} />
                 <span>{formatPercent(changePercent)}</span>
+                <ExternalLink size={10} className="forex-row__link-icon" />
             </div>
-        </div>
+        </a>
     );
 }
 
@@ -91,7 +94,6 @@ export default function MarketPanel() {
     const oilData = useMemo(() => getOilData(), []);
     const goldData = useMemo(() => getGoldData(), []);
 
-    // Filter forex berdasarkan search + region
     const filteredForex = useMemo(() => {
         if (!snapshot?.forex) return [];
         return snapshot.forex.filter(fx => {
@@ -122,25 +124,29 @@ export default function MarketPanel() {
                 </button>
             </div>
 
-            {/* Price Cards */}
+            {/* Price Cards — Clickable → TradingView */}
             <div className="market-panel__cards">
                 <PriceCard label="WTI Crude" icon={Droplets} loading={loading} live={snapshot?.isRealOil}
                     price={snapshot?.oil?.wti?.price} change={snapshot?.oil?.wti?.change}
-                    changePercent={snapshot?.oil?.wti?.changePercent} color={CHART_COLORS.blue} />
+                    changePercent={snapshot?.oil?.wti?.changePercent} color={CHART_COLORS.blue}
+                    href={EXTERNAL_LINKS.WTI} />
                 <PriceCard label="Brent Crude" icon={Droplets} loading={loading} live={snapshot?.isRealOil}
                     price={snapshot?.oil?.brent?.price} change={snapshot?.oil?.brent?.change}
-                    changePercent={snapshot?.oil?.brent?.changePercent} color={CHART_COLORS.cyan} />
+                    changePercent={snapshot?.oil?.brent?.changePercent} color={CHART_COLORS.cyan}
+                    href={EXTERNAL_LINKS.BRENT} />
                 <PriceCard label="Gold (XAU)" icon={Gem} loading={loading} live={snapshot?.isRealGold}
                     price={snapshot?.gold?.price} change={snapshot?.gold?.change}
-                    changePercent={snapshot?.gold?.changePercent} color={CHART_COLORS.gold} />
+                    changePercent={snapshot?.gold?.changePercent} color={CHART_COLORS.gold}
+                    href={EXTERNAL_LINKS.GOLD} />
             </div>
 
-            {/* Charts */}
+            {/* Charts — Clickable titles → TradingView */}
             <div className="market-panel__charts">
                 <div className="chart-container card">
-                    <h3 className="chart-container__title">
+                    <a href={EXTERNAL_LINKS.WTI} target="_blank" rel="noopener noreferrer" className="chart-container__title chart-container__title--link">
                         <Droplets size={16} style={{ color: CHART_COLORS.blue }} /> Oil Prices — 30 Day Trend
-                    </h3>
+                        <ExternalLink size={12} className="chart-link-icon" />
+                    </a>
                     <ResponsiveContainer width="100%" height={250}>
                         <AreaChart data={oilData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
                             <defs>
@@ -163,9 +169,10 @@ export default function MarketPanel() {
                     </ResponsiveContainer>
                 </div>
                 <div className="chart-container card">
-                    <h3 className="chart-container__title">
+                    <a href={EXTERNAL_LINKS.GOLD} target="_blank" rel="noopener noreferrer" className="chart-container__title chart-container__title--link">
                         <Gem size={16} style={{ color: CHART_COLORS.gold }} /> Gold Price (XAU/USD) — 30 Day Trend
-                    </h3>
+                        <ExternalLink size={12} className="chart-link-icon" />
+                    </a>
                     <ResponsiveContainer width="100%" height={250}>
                         <AreaChart data={goldData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
                             <defs>
@@ -184,32 +191,30 @@ export default function MarketPanel() {
                 </div>
             </div>
 
-            {/* Forex Table - 30 PAIRS WITH SEARCH + REGION FILTER */}
+            {/* Forex Table — Clickable rows → TradingView */}
             <div className="forex-table card">
-                <h3 className="chart-container__title" style={{ marginBottom: '12px' }}>
-                    💱 Foreign Exchange Rates (vs USD) — {filteredForex.length} pairs
-                    {snapshot?.isRealForex && <span className="badge badge-green" style={{ marginLeft: 8, fontSize: '0.65rem' }}>LIVE</span>}
-                </h3>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                    <h3 className="chart-container__title" style={{ marginBottom: 0 }}>
+                        💱 Foreign Exchange Rates (vs USD) — {filteredForex.length} pairs
+                        {snapshot?.isRealForex && <span className="badge badge-green" style={{ marginLeft: 8, fontSize: '0.65rem' }}>LIVE</span>}
+                    </h3>
+                    <a href={EXTERNAL_LINKS.FRANKFURTER} target="_blank" rel="noopener noreferrer"
+                        className="data-source-link" title="Data from Frankfurter API">
+                        <span>Frankfurter</span> <ExternalLink size={10} />
+                    </a>
+                </div>
 
-                {/* Search + Region Filter */}
                 <div className="forex-table__controls">
                     <div className="forex-search">
                         <Search size={14} />
-                        <input
-                            type="text"
-                            placeholder="Search currency..."
-                            value={searchQuery}
-                            onChange={e => setSearchQuery(e.target.value)}
-                            className="forex-search__input"
-                        />
+                        <input type="text" placeholder="Search currency..." value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)} className="forex-search__input" />
                     </div>
                     <div className="forex-region-filters">
                         {FOREX_REGIONS.map(region => (
-                            <button
-                                key={region}
+                            <button key={region}
                                 className={`filter-btn ${activeRegion === region ? 'filter-btn--active' : ''}`}
-                                onClick={() => setActiveRegion(region)}
-                            >
+                                onClick={() => setActiveRegion(region)}>
                                 {region}
                             </button>
                         ))}
@@ -231,7 +236,7 @@ export default function MarketPanel() {
                         </div>
                         <div className="forex-table__body">
                             {filteredForex.map((fx, i) => (
-                                <ForexRow key={i} {...fx} />
+                                <ForexRow key={i} {...fx} from="USD" to={fx.pair?.split('/')[1]} />
                             ))}
                             {filteredForex.length === 0 && (
                                 <div className="forex-table__empty">No currencies match your search</div>

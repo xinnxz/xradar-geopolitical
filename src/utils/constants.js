@@ -114,3 +114,28 @@ export const NAV_ITEMS = [
   { id: 'map', label: 'Conflict Map', icon: 'Map' },
   { id: 'risk', label: 'Risk Index', icon: 'ShieldAlert' },
 ];
+
+// ========================================
+// External Links — Professional TradingView & Source URLs
+// ========================================
+export const EXTERNAL_LINKS = {
+  // Commodity TradingView charts
+  GOLD: 'https://www.tradingview.com/symbols/XAUUSD/',
+  WTI: 'https://www.tradingview.com/symbols/USOIL/',
+  BRENT: 'https://www.tradingview.com/symbols/UKOIL/',
+
+  // Forex — TradingView symbol URL builder
+  forexPair: (from, to) => `https://www.tradingview.com/symbols/${from}${to}/`,
+
+  // Conflict data
+  ACLED_COUNTRY: (country) => `https://acleddata.com/dashboard/#/dashboard/${encodeURIComponent(country)}`,
+  ACLED_HOME: 'https://acleddata.com/',
+
+  // News sources
+  GNEWS: 'https://gnews.io/',
+
+  // Data providers  
+  FRANKFURTER: 'https://www.frankfurter.app/',
+  ALPHA_VANTAGE: 'https://www.alphavantage.co/',
+};
+
