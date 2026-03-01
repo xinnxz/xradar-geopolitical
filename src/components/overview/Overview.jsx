@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from 'react';
+import { useMemo } from 'react';
 import {
     AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid
 } from 'recharts';
@@ -7,13 +7,10 @@ import {
     Droplets, Gem, TrendingUp, TrendingDown, Minus,
     ShieldAlert, Newspaper, MapPin, Clock, Wifi, ExternalLink
 } from 'lucide-react';
-import { fetchPriceSnapshot, getOilData, getGoldData } from '../../services/marketService';
-import { fetchNews } from '../../services/newsService';
-import { getMockConflictEvents, getConflictZones } from '../../services/conflictService';
-import { calculateRiskScore, generateRiskHistory } from '../../utils/riskCalculator';
+import { getOilData, getGoldData } from '../../services/marketService';
 import { formatCurrency, formatPercent, getChangeColor, formatTimeAgo } from '../../utils/formatters';
-import { CHART_COLORS, MAP_CONFIG, REFRESH_INTERVALS, EXTERNAL_LINKS } from '../../utils/constants';
-import { useAutoRefresh } from '../../hooks/useAutoRefresh';
+import { CHART_COLORS, MAP_CONFIG, EXTERNAL_LINKS } from '../../utils/constants';
+import { useGlobalData } from '../../hooks/useGlobalData';
 import 'leaflet/dist/leaflet.css';
 import './Overview.css';
 
@@ -49,32 +46,16 @@ function MiniPriceCard({ label, icon: Icon, price, changePercent, color, loading
 }
 
 export default function Overview() {
-    // Real data hooks
-    const fetchSnapshot = useCallback(() => fetchPriceSnapshot(), []);
-    const fetchNewsFn = useCallback(() => fetchNews('all'), []);
+    // Use centralized real data from context
+    const { snapshot, news: allNews, conflicts, zones, risk, riskHistory, loading } = useGlobalData();
 
-    const { data: snapshot, loading: priceLoading } = useAutoRefresh(fetchSnapshot, REFRESH_INTERVALS.FOREX);
-    const { data: newsData, loading: newsLoading } = useAutoRefresh(fetchNewsFn, REFRESH_INTERVALS.NEWS);
+    const priceLoading = loading && !snapshot;
+    const newsLoading = loading && allNews.length === 0;
+    const news = allNews.slice(0, 5);
 
-    const news = (newsData || []).slice(0, 5);
+    // Chart data (still seed-based for now — will be replaced with real historical API later)
     const oilData = useMemo(() => getOilData(), []);
     const goldData = useMemo(() => getGoldData(), []);
-    const events = useMemo(() => getMockConflictEvents(), []);
-    const zones = useMemo(() => getConflictZones(), []);
-    const riskHistory = useMemo(() => generateRiskHistory(14), []);
-
-    // Calculate risk from actual data
-    const risk = useMemo(() => {
-        const negCount = news.filter(n => n.sentiment === 'negative').length;
-        const negPercent = news.length > 0 ? (negCount / news.length) * 100 : 50;
-        return calculateRiskScore({
-            conflictEvents: events.length * 6,
-            oilChange: snapshot?.oil?.wti?.changePercent || -1.5,
-            goldChange: snapshot?.gold?.changePercent || 0.8,
-            negativeNewsPercent: negPercent,
-            breakingNewsCount: news.length,
-        });
-    }, [snapshot, news, events]);
 
     return (
         <div className="overview fade-in">
@@ -91,6 +72,9 @@ export default function Overview() {
                 </div>
                 <div className="risk-banner__badges">
                     {snapshot?.isRealForex && <span className="badge badge-green"><Wifi size={10} /> Live Forex</span>}
+                    {snapshot?.isRealGold && <span className="badge badge-green"><Wifi size={10} /> Live Gold</span>}
+                    {snapshot?.isRealOil && <span className="badge badge-green"><Wifi size={10} /> Live Oil</span>}
+                    {conflicts.length > 0 && conflicts[0]?.source !== 'Mock' && <span className="badge badge-green"><Wifi size={10} /> Live ACLED</span>}
                 </div>
                 <div className="risk-banner__chart">
                     <ResponsiveContainer width="100%" height={50}>
@@ -165,7 +149,7 @@ export default function Overview() {
                     </ResponsiveContainer>
                 </div>
 
-                {/* Mini Map */}
+                {/* Mini Map — now uses REAL ACLED data */}
                 <div className="overview__map card">
                     <h3 className="section-title">
                         <MapPin size={14} style={{ color: CHART_COLORS.red }} /> Active Conflict Zones
@@ -179,20 +163,20 @@ export default function Overview() {
                                 <Rectangle key={z.id} bounds={z.bounds}
                                     pathOptions={{ color: z.color, fillColor: z.color, fillOpacity: 0.3, weight: 1 }} />
                             ))}
-                            {events.map(e => (
+                            {conflicts.slice(0, 50).map(e => (
                                 <CircleMarker key={e.id} center={[e.lat, e.lng]} radius={4}
                                     pathOptions={{ color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.8 }} />
                             ))}
                         </MapContainer>
                     </div>
                     <div className="overview__map-stat">
-                        <span>{events.length} active events</span>
+                        <span>{conflicts.length} active events</span>
                         <span>•</span>
-                        <span>{new Set(events.map(e => e.country)).size} countries</span>
+                        <span>{new Set(conflicts.map(e => e.country)).size} countries</span>
                     </div>
                 </div>
 
-                {/* Latest News */}
+                {/* Latest News — from global context */}
                 <div className="overview__news card">
                     <h3 className="section-title">
                         <Newspaper size={14} style={{ color: CHART_COLORS.blue }} /> Latest Headlines

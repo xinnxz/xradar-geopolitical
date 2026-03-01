@@ -77,24 +77,31 @@ function getRiskLevel(score) {
 }
 
 /**
- * Generate data historis risk score (mock)
+ * Generate data historis risk score (seed-based, konsisten per hari)
+ * @param {number} days - jumlah hari history
+ * @param {number} currentScore - skor risiko saat ini, digunakan sebagai anchor
  */
-export function generateRiskHistory(days = 30) {
+export function generateRiskHistory(days = 30, currentScore = 45) {
   const data = [];
   const now = new Date();
-  let baseScore = 45;
 
   for (let i = days; i >= 0; i--) {
     const date = new Date(now);
     date.setDate(date.getDate() - i);
+    const seed = date.getFullYear() * 10000 + (date.getMonth() + 1) * 100 + date.getDate();
 
-    // Random walk dengan trend naik
-    baseScore += (Math.random() - 0.45) * 8;
-    baseScore = Math.max(10, Math.min(95, baseScore));
+    // Seed-based noise — konsisten per hari
+    const noise = (Math.sin(seed * 3.7) * 10000);
+    const variation = (noise - Math.floor(noise) - 0.5) * 20;
+
+    // Anchor ke current score, makin dekat ke hari ini makin dekat ke currentScore
+    const weight = (days - i) / days; // 0 = oldest, 1 = today
+    const baseScore = 35 + variation; // historical baseline
+    const score = Math.round(baseScore * (1 - weight) + currentScore * weight);
 
     data.push({
       date: date.toISOString().split('T')[0],
-      score: Math.round(baseScore),
+      score: Math.max(5, Math.min(95, score)),
     });
   }
 

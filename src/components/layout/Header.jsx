@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Clock, Wifi, WifiOff, AlertTriangle } from 'lucide-react';
+import { useGlobalData } from '../../hooks/useGlobalData';
 import './Header.css';
 
-export default function Header({ riskScore = 0, riskLevel = 'Moderate' }) {
+export default function Header() {
+    const { risk, loading } = useGlobalData();
     const [time, setTime] = useState(new Date());
     const [isOnline, setIsOnline] = useState(navigator.onLine);
 
@@ -19,12 +21,9 @@ export default function Header({ riskScore = 0, riskLevel = 'Moderate' }) {
         };
     }, []);
 
-    const getRiskColor = () => {
-        if (riskScore <= 25) return 'var(--accent-green)';
-        if (riskScore <= 50) return 'var(--accent-gold)';
-        if (riskScore <= 75) return 'var(--accent-orange)';
-        return 'var(--accent-red)';
-    };
+    const riskScore = risk?.score || 0;
+    const riskLevel = risk?.level || 'Loading...';
+    const riskColor = risk?.color || 'var(--text-muted)';
 
     return (
         <header className="header">
@@ -44,7 +43,9 @@ export default function Header({ riskScore = 0, riskLevel = 'Moderate' }) {
                         </span>
                         <span className="header__ticker-separator">•</span>
                         <span className="header__ticker-item">
-                            Risk Level: <strong style={{ color: getRiskColor() }}>{riskLevel}</strong> ({riskScore}/100)
+                            Risk Level: <strong style={{ color: riskColor }}>
+                                {loading ? '...' : riskLevel}
+                            </strong> ({loading ? '—' : `${riskScore}/100`})
                         </span>
                         <span className="header__ticker-separator">•</span>
                         <span className="header__ticker-item">Data refreshes automatically</span>

@@ -132,7 +132,7 @@ function getFallbackGold() {
   const seed = new Date().toISOString().split('T')[0];
   const hash = Array.from(seed).reduce((a, c) => a + c.charCodeAt(0), 0);
   const noise = (Math.sin(hash * 2.7) * 100) - 50;
-  return { price: +(2400 + noise).toFixed(2), change: +noise.toFixed(2), changePercent: +((noise / 2400) * 100).toFixed(2), isReal: false };
+  return { price: +(5200 + noise).toFixed(2), change: +noise.toFixed(2), changePercent: +((noise / 5200) * 100).toFixed(2), isReal: false };
 }
 
 /**
@@ -163,8 +163,8 @@ function getFallbackOil() {
   const n1 = Math.sin(hash * 1.1) * 3;
   const n2 = Math.sin(hash * 1.3) * 3;
   return {
-    wti: { price: +(80 + n1).toFixed(2), change: +n1.toFixed(2), changePercent: +((n1 / 80) * 100).toFixed(2) },
-    brent: { price: +(84 + n2).toFixed(2), change: +n2.toFixed(2), changePercent: +((n2 / 84) * 100).toFixed(2) },
+    wti: { price: +(67 + n1).toFixed(2), change: +n1.toFixed(2), changePercent: +((n1 / 67) * 100).toFixed(2) },
+    brent: { price: +(72 + n2).toFixed(2), change: +n2.toFixed(2), changePercent: +((n2 / 72) * 100).toFixed(2) },
     isReal: false,
   };
 }
@@ -233,8 +233,8 @@ export function getOilData(days = 30) {
     const r2 = Math.sin(seed * 1.3) * 10000;
     data.push({
       date: date.toISOString().split('T')[0],
-      wti: +(80 + (r1 - Math.floor(r1) - 0.5) * 6).toFixed(2),
-      brent: +(84 + (r2 - Math.floor(r2) - 0.5) * 6).toFixed(2),
+      wti: +(67 + (r1 - Math.floor(r1) - 0.5) * 6).toFixed(2),
+      brent: +(72 + (r2 - Math.floor(r2) - 0.5) * 6).toFixed(2),
     });
   }
   setCache(cacheKey, data, 60 * 60 * 1000);
@@ -254,7 +254,7 @@ export function getGoldData(days = 30) {
     const r = Math.sin(seed * 2.7) * 10000;
     data.push({
       date: date.toISOString().split('T')[0],
-      price: +(2380 + (r - Math.floor(r) - 0.5) * 80).toFixed(2),
+      price: +(5200 + (r - Math.floor(r) - 0.5) * 200).toFixed(2),
     });
   }
   setCache(cacheKey, data, 60 * 60 * 1000);

@@ -1,23 +1,20 @@
-import { useMemo } from 'react';
 import {
     AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
     RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar
 } from 'recharts';
 import { ShieldAlert, Activity, Newspaper, Swords, TrendingUp } from 'lucide-react';
-import { calculateRiskScore, generateRiskHistory } from '../../utils/riskCalculator';
+import { useGlobalData } from '../../hooks/useGlobalData';
 import { CHART_COLORS } from '../../utils/constants';
 import './RiskPanel.css';
 
 function RiskGauge({ score, level, color }) {
-    // SVG arc gauge
     const radius = 80;
-    const circumference = Math.PI * radius; // Semi-circle
+    const circumference = Math.PI * radius;
     const progress = (score / 100) * circumference;
 
     return (
         <div className="risk-gauge">
             <svg viewBox="0 0 200 120" className="risk-gauge__svg">
-                {/* Background arc */}
                 <path
                     d="M 20 100 A 80 80 0 0 1 180 100"
                     fill="none"
@@ -25,7 +22,6 @@ function RiskGauge({ score, level, color }) {
                     strokeWidth="12"
                     strokeLinecap="round"
                 />
-                {/* Progress arc */}
                 <path
                     d="M 20 100 A 80 80 0 0 1 180 100"
                     fill="none"
@@ -35,7 +31,6 @@ function RiskGauge({ score, level, color }) {
                     strokeDasharray={`${progress} ${circumference}`}
                     style={{ transition: 'stroke-dasharray 1s ease, stroke 0.5s ease' }}
                 />
-                {/* Score text */}
                 <text x="100" y="85" textAnchor="middle" className="risk-gauge__score" fill={color}>
                     {score}
                 </text>
@@ -75,22 +70,36 @@ function FactorCard({ icon: Icon, label, score, color, description }) {
 }
 
 export default function RiskPanel() {
-    const riskResult = useMemo(() => calculateRiskScore({
-        conflictEvents: 87,
-        oilChange: -2.3,
-        goldChange: 1.5,
-        negativeNewsPercent: 65,
-        breakingNewsCount: 12,
-    }), []);
+    const { risk, riskHistory, conflicts, news, snapshot, loading } = useGlobalData();
 
-    const historyData = useMemo(() => generateRiskHistory(30), []);
+    // Build dynamic descriptions from real data
+    const conflictCountries = new Set(conflicts.map(e => e.country));
+    const negCount = news.filter(n => n.sentiment === 'negative').length;
+    const negPercent = news.length > 0 ? Math.round((negCount / news.length) * 100) : 0;
+    const oilChange = snapshot?.oil?.wti?.changePercent?.toFixed(1) || '0.0';
+    const goldChange = snapshot?.gold?.changePercent?.toFixed(1) || '0.0';
 
     const radarData = [
-        { subject: 'Conflict', value: riskResult.factors.conflict },
-        { subject: 'Volatility', value: riskResult.factors.volatility },
-        { subject: 'Sentiment', value: riskResult.factors.sentiment },
-        { subject: 'Events', value: riskResult.factors.events },
+        { subject: 'Conflict', value: risk.factors.conflict },
+        { subject: 'Volatility', value: risk.factors.volatility },
+        { subject: 'Sentiment', value: risk.factors.sentiment },
+        { subject: 'Events', value: risk.factors.events },
     ];
+
+    if (loading) {
+        return (
+            <div className="risk-panel fade-in">
+                <div className="risk-panel__top">
+                    <div className="risk-panel__gauge card">
+                        <div className="skeleton" style={{ width: '100%', height: 200, borderRadius: 8 }} />
+                    </div>
+                    <div className="risk-panel__radar card">
+                        <div className="skeleton" style={{ width: '100%', height: 200, borderRadius: 8 }} />
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="risk-panel fade-in">
@@ -98,13 +107,13 @@ export default function RiskPanel() {
                 {/* Gauge */}
                 <div className="risk-panel__gauge card">
                     <h3 className="section-title">
-                        <ShieldAlert size={16} style={{ color: riskResult.color }} />
+                        <ShieldAlert size={16} style={{ color: risk.color }} />
                         Global Risk Index
                     </h3>
-                    <RiskGauge score={riskResult.score} level={riskResult.level} color={riskResult.color} />
+                    <RiskGauge score={risk.score} level={risk.level} color={risk.color} />
                     <p className="risk-panel__description">
-                        Composite risk score based on conflict intensity, market volatility,
-                        news sentiment, and breaking event frequency.
+                        Composite risk score computed from <strong>{conflicts.length}</strong> conflict events,
+                        commodity volatility, and <strong>{news.length}</strong> news articles.
                     </p>
                 </div>
 
@@ -132,35 +141,35 @@ export default function RiskPanel() {
                 </div>
             </div>
 
-            {/* Factor Cards */}
+            {/* Factor Cards — all descriptions generated from real data */}
             <div className="risk-panel__factors">
                 <FactorCard
                     icon={Swords}
                     label="Conflict Intensity"
-                    score={riskResult.factors.conflict}
+                    score={risk.factors.conflict}
                     color={CHART_COLORS.red}
-                    description="87 events in 7 days across 8 countries"
+                    description={`${conflicts.length} events across ${conflictCountries.size} countries`}
                 />
                 <FactorCard
                     icon={TrendingUp}
                     label="Market Volatility"
-                    score={riskResult.factors.volatility}
+                    score={risk.factors.volatility}
                     color={CHART_COLORS.orange}
-                    description="Oil -2.3%, Gold +1.5% in 24h"
+                    description={`Oil ${oilChange}%, Gold ${goldChange}%`}
                 />
                 <FactorCard
                     icon={Newspaper}
                     label="News Sentiment"
-                    score={riskResult.factors.sentiment}
+                    score={risk.factors.sentiment}
                     color={CHART_COLORS.purple}
-                    description="65% negative sentiment across sources"
+                    description={`${negPercent}% negative across ${news.length} articles`}
                 />
                 <FactorCard
                     icon={Activity}
                     label="Event Frequency"
-                    score={riskResult.factors.events}
+                    score={risk.factors.events}
                     color={CHART_COLORS.gold}
-                    description="12 breaking news alerts today"
+                    description={`${news.length} news articles monitored`}
                 />
             </div>
 
@@ -171,11 +180,11 @@ export default function RiskPanel() {
                     Risk Score — 30 Day Trend
                 </h3>
                 <ResponsiveContainer width="100%" height={200}>
-                    <AreaChart data={historyData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+                    <AreaChart data={riskHistory} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
                         <defs>
                             <linearGradient id="gradRisk" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor={riskResult.color} stopOpacity={0.3} />
-                                <stop offset="100%" stopColor={riskResult.color} stopOpacity={0} />
+                                <stop offset="0%" stopColor={risk.color} stopOpacity={0.3} />
+                                <stop offset="100%" stopColor={risk.color} stopOpacity={0} />
                             </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" />
@@ -194,7 +203,7 @@ export default function RiskPanel() {
                             type="monotone"
                             dataKey="score"
                             name="Risk Score"
-                            stroke={riskResult.color}
+                            stroke={risk.color}
                             fill="url(#gradRisk)"
                             strokeWidth={2}
                         />

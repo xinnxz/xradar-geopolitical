@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { GlobalDataProvider } from './hooks/useGlobalData';
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
 import Overview from './components/overview/Overview';
@@ -22,12 +23,14 @@ export default function App() {
   const ActiveComponent = views[activeView] || Overview;
 
   return (
-    <div className="app">
-      <Sidebar activeView={activeView} onViewChange={setActiveView} />
-      <Header riskScore={58} riskLevel="High" />
-      <main className="main-content">
-        <ActiveComponent key={activeView} />
-      </main>
-    </div>
+    <GlobalDataProvider>
+      <div className="app">
+        <Sidebar activeView={activeView} onViewChange={setActiveView} />
+        <Header />
+        <main className="main-content">
+          <ActiveComponent key={activeView} />
+        </main>
+      </div>
+    </GlobalDataProvider>
   );
 }
