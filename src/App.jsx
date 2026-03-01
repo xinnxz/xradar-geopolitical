@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { GlobalDataProvider } from './hooks/useGlobalData';
+import ErrorBoundary from './components/layout/ErrorBoundary';
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
 import Overview from './components/overview/Overview';
@@ -28,7 +29,9 @@ export default function App() {
         <Sidebar activeView={activeView} onViewChange={setActiveView} />
         <Header />
         <main className="main-content">
-          <ActiveComponent key={activeView} />
+          <ErrorBoundary key={activeView}>
+            <ActiveComponent />
+          </ErrorBoundary>
         </main>
       </div>
     </GlobalDataProvider>

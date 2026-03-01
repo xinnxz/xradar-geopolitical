@@ -1,16 +1,17 @@
 import { useMemo } from 'react';
 import {
-    AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid
+    AreaChart, Area, ResponsiveContainer
 } from 'recharts';
 import { MapContainer, TileLayer, Rectangle, CircleMarker } from 'react-leaflet';
 import {
     Droplets, Gem, TrendingUp, TrendingDown, Minus,
     ShieldAlert, Newspaper, MapPin, Clock, Wifi, ExternalLink
 } from 'lucide-react';
-import { getOilData, getGoldData } from '../../services/marketService';
+import TradingChart from '../market/TradingChart';
 import { formatCurrency, formatPercent, getChangeColor, formatTimeAgo } from '../../utils/formatters';
 import { CHART_COLORS, MAP_CONFIG, EXTERNAL_LINKS } from '../../utils/constants';
 import { useGlobalData } from '../../hooks/useGlobalData';
+import '../market/TradingChart.css';
 import 'leaflet/dist/leaflet.css';
 import './Overview.css';
 
@@ -53,9 +54,16 @@ export default function Overview() {
     const newsLoading = loading && allNews.length === 0;
     const news = allNews.slice(0, 5);
 
-    // Chart data (still seed-based for now — will be replaced with real historical API later)
-    const oilData = useMemo(() => getOilData(), []);
-    const goldData = useMemo(() => getGoldData(), []);
+    // Extract real historical data for TradingView charts
+    const oilHistory = useMemo(() => {
+        const history = snapshot?.oil?.wti?.history || [];
+        return history.map(p => ({ time: p.date, value: p.value, close: p.value }));
+    }, [snapshot]);
+
+    const goldHistory = useMemo(() => {
+        const history = snapshot?.gold?.history || [];
+        return history.map(p => ({ time: p.date, value: p.value, close: p.value }));
+    }, [snapshot]);
 
     return (
         <div className="overview fade-in">
@@ -103,50 +111,54 @@ export default function Overview() {
 
             {/* Main Grid */}
             <div className="overview__grid">
-                {/* Oil Chart */}
+                {/* Oil Chart — TradingView mini */}
                 <div className="overview__chart card">
                     <a href={EXTERNAL_LINKS.WTI} target="_blank" rel="noopener noreferrer" className="section-title section-title--link">
-                        <Droplets size={14} style={{ color: CHART_COLORS.blue }} /> Oil Price Trend
+                        <Droplets size={14} style={{ color: CHART_COLORS.blue }} /> Oil Price (WTI) — Real Data
                         <ExternalLink size={10} className="chart-link-icon" />
                     </a>
-                    <ResponsiveContainer width="100%" height={200}>
-                        <AreaChart data={oilData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
-                            <defs>
-                                <linearGradient id="gradWtiOv" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stopColor={CHART_COLORS.blue} stopOpacity={0.3} />
-                                    <stop offset="100%" stopColor={CHART_COLORS.blue} stopOpacity={0} />
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="date" tick={{ fontSize: 9 }} interval={6} />
-                            <YAxis domain={['auto', 'auto']} tick={{ fontSize: 9 }} />
-                            <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '8px', fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }} />
-                            <Area type="monotone" dataKey="wti" stroke={CHART_COLORS.blue} fill="url(#gradWtiOv)" strokeWidth={2} />
-                        </AreaChart>
-                    </ResponsiveContainer>
+                    <div style={{ height: 200 }}>
+                        {oilHistory.length > 0 ? (
+                            <TradingChart
+                                key="overview-oil"
+                                data={oilHistory}
+                                symbol="CL"
+                                chartType="area"
+                                height={200}
+                                accentColor="#3b82f6"
+                                precision={2}
+                            />
+                        ) : (
+                            <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#5e6571', fontSize: '0.8rem' }}>
+                                {loading ? 'Loading...' : 'Deploy to Vercel for real data'}
+                            </div>
+                        )}
+                    </div>
                 </div>
 
-                {/* Gold Chart */}
+                {/* Gold Chart — TradingView mini */}
                 <div className="overview__chart card">
                     <a href={EXTERNAL_LINKS.GOLD} target="_blank" rel="noopener noreferrer" className="section-title section-title--link">
-                        <Gem size={14} style={{ color: CHART_COLORS.gold }} /> Gold Price Trend
+                        <Gem size={14} style={{ color: CHART_COLORS.gold }} /> Gold Price (XAU) — Real Data
                         <ExternalLink size={10} className="chart-link-icon" />
                     </a>
-                    <ResponsiveContainer width="100%" height={200}>
-                        <AreaChart data={goldData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
-                            <defs>
-                                <linearGradient id="gradGoldOv" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stopColor={CHART_COLORS.gold} stopOpacity={0.3} />
-                                    <stop offset="100%" stopColor={CHART_COLORS.gold} stopOpacity={0} />
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="date" tick={{ fontSize: 9 }} interval={6} />
-                            <YAxis domain={['auto', 'auto']} tick={{ fontSize: 9 }} />
-                            <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '8px', fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }} />
-                            <Area type="monotone" dataKey="price" stroke={CHART_COLORS.gold} fill="url(#gradGoldOv)" strokeWidth={2} />
-                        </AreaChart>
-                    </ResponsiveContainer>
+                    <div style={{ height: 200 }}>
+                        {goldHistory.length > 0 ? (
+                            <TradingChart
+                                key="overview-gold"
+                                data={goldHistory}
+                                symbol="XAUUSD"
+                                chartType="area"
+                                height={200}
+                                accentColor="#f0b90b"
+                                precision={2}
+                            />
+                        ) : (
+                            <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#5e6571', fontSize: '0.8rem' }}>
+                                {loading ? 'Loading...' : 'Deploy to Vercel for real data'}
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Mini Map — now uses REAL ACLED data */}
