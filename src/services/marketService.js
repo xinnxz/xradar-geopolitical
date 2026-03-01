@@ -192,7 +192,7 @@ function getFallbackOil() {
  * Build complete price snapshot (forex real + commodities real)
  */
 export async function fetchPriceSnapshot() {
-  const cacheKey = 'price_snapshot_v2';
+  const cacheKey = 'price_snapshot_v3'; // Bumped: now includes history data
   const cached = getCache(cacheKey);
   if (cached) return cached;
 
