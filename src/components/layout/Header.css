@@ -1,0 +1,130 @@
+.header {
+  position: fixed;
+  top: 0;
+  left: var(--sidebar-width);
+  right: 0;
+  height: var(--header-height);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-lg);
+  z-index: 90;
+  backdrop-filter: blur(12px);
+}
+
+/* Left - Title */
+.header__left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.header__title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-sm);
+}
+
+.header__title-x {
+  font-weight: 900;
+  background: var(--gradient-blue);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.header__subtitle {
+  font-size: 0.7rem;
+  font-weight: 400;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* Center - Ticker */
+.header__center {
+  flex: 1;
+  max-width: 600px;
+  margin: 0 var(--space-lg);
+  overflow: hidden;
+}
+
+.header__ticker {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-full);
+  padding: 4px var(--space-md);
+  overflow: hidden;
+}
+
+.header__ticker-content {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  white-space: nowrap;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.header__ticker-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.header__ticker-separator {
+  color: var(--text-muted);
+}
+
+/* Right - Status + Clock */
+.header__right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.header__status {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.header__online {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--accent-green);
+}
+
+.header__offline {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--accent-red);
+}
+
+.header__clock {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 4px var(--space-md);
+}
+
+.header__time {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.header__date {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+}
