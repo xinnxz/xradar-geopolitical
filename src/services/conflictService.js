@@ -1,133 +1,189 @@
 // ========================================
-// Conflict / Map Data Service
-// Mock data zona konflik dan event geopolitik
+// Conflict Data Service
+// Real API: ACLED (via Vercel serverless proxy)
+// Fallback: Mock data when no proxy available
 // ========================================
 
+import { getCache, setCache } from './cacheService';
+
 /**
- * Get mock conflict events (simulate ACLED data)
- * Data berisi lokasi, tipe, dan intensitas konflik
+ * Menentukan apakah app berjalan di Vercel (ada /api route)
+ * atau lokal (pakai mock data)
  */
-export function getMockConflictEvents() {
-  return [
-    // Middle East
-    { id: 1, lat: 33.3, lng: 44.4, city: 'Baghdad', country: 'Iraq', type: 'Battle', fatalities: 12, date: '2026-02-28', description: 'Armed clashes between militia factions in northern districts' },
-    { id: 2, lat: 36.2, lng: 37.1, city: 'Aleppo', country: 'Syria', type: 'Shelling', fatalities: 8, date: '2026-02-27', description: 'Artillery exchanges in contested areas' },
-    { id: 3, lat: 15.35, lng: 44.21, city: "Sana'a", country: 'Yemen', type: 'Airstrike', fatalities: 15, date: '2026-02-28', description: 'Coalition airstrikes targeting military installations' },
-    { id: 4, lat: 31.77, lng: 35.23, city: 'Jerusalem', country: 'Israel/Palestine', type: 'Protest', fatalities: 0, date: '2026-03-01', description: 'Mass protests in Old City' },
-    { id: 5, lat: 32.08, lng: 34.78, city: 'Tel Aviv', country: 'Israel', type: 'Protest', fatalities: 0, date: '2026-03-01', description: 'Anti-war demonstrations in city center' },
-
-    // Eastern Europe
-    { id: 6, lat: 48.46, lng: 35.04, city: 'Dnipro', country: 'Ukraine', type: 'Shelling', fatalities: 5, date: '2026-03-01', description: 'Missile strike on infrastructure' },
-    { id: 7, lat: 47.1, lng: 37.6, city: 'Mariupol', country: 'Ukraine', type: 'Battle', fatalities: 20, date: '2026-02-28', description: 'Ongoing frontline clashes' },
-    { id: 8, lat: 50.45, lng: 30.52, city: 'Kyiv', country: 'Ukraine', type: 'Drone Attack', fatalities: 3, date: '2026-03-01', description: 'Drone strikes on city outskirts' },
-    { id: 9, lat: 49.83, lng: 36.25, city: 'Kharkiv', country: 'Ukraine', type: 'Shelling', fatalities: 7, date: '2026-02-27', description: 'Missile attack on residential area' },
-
-    // Africa
-    { id: 10, lat: 15.5, lng: 32.56, city: 'Khartoum', country: 'Sudan', type: 'Battle', fatalities: 30, date: '2026-02-26', description: 'Intense urban fighting between RSF and SAF' },
-    { id: 11, lat: 4.05, lng: 9.7, city: 'Douala', country: 'Cameroon', type: 'Protest', fatalities: 2, date: '2026-02-25', description: 'Civil unrest and police response' },
-    { id: 12, lat: 8.98, lng: -13.23, city: 'Freetown', country: 'Sierra Leone', type: 'Riot', fatalities: 1, date: '2026-02-24', description: 'Economic protests escalate' },
-
-    // Asia
-    { id: 13, lat: 21.03, lng: 96.08, city: 'Mandalay', country: 'Myanmar', type: 'Battle', fatalities: 10, date: '2026-02-28', description: 'Resistance forces engage military junta' },
-    { id: 14, lat: 34.52, lng: 69.17, city: 'Kabul', country: 'Afghanistan', type: 'Explosion', fatalities: 6, date: '2026-02-27', description: 'IED explosion near government building' },
-  ];
+function getProxyUrl() {
+  // Jika di Vercel, gunakan /api/acled
+  // Jika di localhost dev, langsung fallback ke mock
+  return window.location.hostname !== 'localhost' ? '/api/acled' : null;
 }
 
 /**
- * Get conflict zones as GeoJSON-like polygons
- * Simplified rectangles for zones of active conflict
+ * Fetch conflict events dari ACLED API (via proxy)
  */
+export async function fetchConflictEvents(days = 90) {
+  const cacheKey = `conflict_events_${days}`;
+  const cached = getCache(cacheKey);
+  if (cached) return cached;
+
+  const proxyUrl = getProxyUrl();
+
+  if (proxyUrl) {
+    try {
+      const res = await fetch(`${proxyUrl}?limit=200&days=${days}`);
+      if (!res.ok) throw new Error(`Proxy error: ${res.status}`);
+      const data = await res.json();
+
+      if (data?.data?.length > 0) {
+        const events = data.data.map((e, i) => ({
+          id: e.event_id_cnty || `acled-${i}`,
+          type: mapACLEDEventType(e.event_type),
+          title: e.notes || `${e.event_type} in ${e.admin1 || e.country}`,
+          country: e.country,
+          location: e.admin1 || e.location,
+          lat: parseFloat(e.latitude),
+          lng: parseFloat(e.longitude),
+          date: e.event_date,
+          fatalities: parseInt(e.fatalities) || 0,
+          source: e.source || 'ACLED',
+          eventType: e.event_type,
+          subEventType: e.sub_event_type,
+          actor1: e.actor1,
+          actor2: e.actor2,
+        }));
+
+        // Filter out events with invalid coordinates
+        const validEvents = events.filter(e => !isNaN(e.lat) && !isNaN(e.lng));
+        setCache(cacheKey, validEvents, 30 * 60 * 1000); // Cache 30 menit
+        return validEvents;
+      }
+    } catch (error) {
+      console.error('ACLED fetch error:', error);
+    }
+  }
+
+  // Fallback ke mock data
+  return getMockConflictEvents();
+}
+
+/**
+ * Map ACLED event type ke simplified type
+ */
+function mapACLEDEventType(type) {
+  const map = {
+    'Battles': 'battle',
+    'Explosions/Remote violence': 'explosion',
+    'Violence against civilians': 'violence',
+    'Protests': 'protest',
+    'Riots': 'riot',
+    'Strategic developments': 'strategic',
+  };
+  return map[type] || 'other';
+}
+
+/**
+ * Build conflict zones dari event data (real atau mock)
+ */
+export function buildConflictZones(events) {
+  if (!events?.length) return getConflictZones();
+
+  // Group events by country/region
+  const countryGroups = {};
+  events.forEach(e => {
+    if (!countryGroups[e.country]) {
+      countryGroups[e.country] = { events: [], lats: [], lngs: [], fatalities: 0 };
+    }
+    countryGroups[e.country].events.push(e);
+    countryGroups[e.country].lats.push(e.lat);
+    countryGroups[e.country].lngs.push(e.lng);
+    countryGroups[e.country].fatalities += e.fatalities;
+  });
+
+  // Build zone bounding boxes
+  return Object.entries(countryGroups)
+    .filter(([, g]) => g.events.length >= 3) // Minimal 3 events untuk jadi zone
+    .map(([country, group], i) => {
+      const minLat = Math.min(...group.lats) - 0.5;
+      const maxLat = Math.max(...group.lats) + 0.5;
+      const minLng = Math.min(...group.lngs) - 0.5;
+      const maxLng = Math.max(...group.lngs) + 0.5;
+
+      const severity = group.fatalities > 100 ? 'critical'
+        : group.fatalities > 20 ? 'high'
+        : group.events.length > 10 ? 'moderate' : 'low';
+
+      const colors = { critical: '#ef4444', high: '#f97316', moderate: '#f59e0b', low: '#3b82f6' };
+
+      return {
+        id: `zone-${i}`,
+        name: `${country} Conflict Zone`,
+        country,
+        bounds: [[minLat, minLng], [maxLat, maxLng]],
+        color: colors[severity],
+        severity,
+        eventCount: group.events.length,
+        fatalities: group.fatalities,
+      };
+    });
+}
+
+// ========================================
+// MOCK DATA FALLBACK
+// ========================================
+
+export function getMockConflictEvents() {
+  const events = [
+    { id: 'e1', type: 'battle', title: 'Armed clash in Donetsk region', country: 'Ukraine', location: 'Donetsk',
+      lat: 48.0, lng: 37.8, date: '2026-02-28', fatalities: 12, source: 'Mock', eventType: 'Battles' },
+    { id: 'e2', type: 'explosion', title: 'Missile strike reported near Kharkiv', country: 'Ukraine', location: 'Kharkiv',
+      lat: 49.99, lng: 36.23, date: '2026-02-27', fatalities: 5, source: 'Mock', eventType: 'Explosions/Remote violence' },
+    { id: 'e3', type: 'battle', title: 'Military operation in Zaporizhzhia front', country: 'Ukraine', location: 'Zaporizhzhia',
+      lat: 47.84, lng: 35.14, date: '2026-02-26', fatalities: 8, source: 'Mock', eventType: 'Battles' },
+    { id: 'e4', type: 'explosion', title: 'Airstrike in northern Gaza', country: 'Palestine', location: 'Gaza',
+      lat: 31.52, lng: 34.46, date: '2026-02-28', fatalities: 15, source: 'Mock', eventType: 'Explosions/Remote violence' },
+    { id: 'e5', type: 'violence', title: 'Civilian casualties in Rafah', country: 'Palestine', location: 'Rafah',
+      lat: 31.30, lng: 34.25, date: '2026-02-27', fatalities: 7, source: 'Mock', eventType: 'Violence against civilians' },
+    { id: 'e6', type: 'battle', title: 'RSF-SAF clashes in Khartoum', country: 'Sudan', location: 'Khartoum',
+      lat: 15.55, lng: 32.53, date: '2026-02-26', fatalities: 20, source: 'Mock', eventType: 'Battles' },
+    { id: 'e7', type: 'explosion', title: 'Drone strike in El Fasher', country: 'Sudan', location: 'El Fasher',
+      lat: 13.63, lng: 25.35, date: '2026-02-25', fatalities: 9, source: 'Mock', eventType: 'Explosions/Remote violence' },
+    { id: 'e8', type: 'protest', title: 'Anti-government protest in Yangon', country: 'Myanmar', location: 'Yangon',
+      lat: 16.87, lng: 96.19, date: '2026-02-24', fatalities: 0, source: 'Mock', eventType: 'Protests' },
+    { id: 'e9', type: 'violence', title: 'Ethnic violence in Beni territory', country: 'DR Congo', location: 'Beni',
+      lat: 0.49, lng: 29.47, date: '2026-02-25', fatalities: 11, source: 'Mock', eventType: 'Violence against civilians' },
+    { id: 'e10', type: 'battle', title: 'Al-Shabaab attack on military base', country: 'Somalia', location: 'Mogadishu',
+      lat: 2.05, lng: 45.34, date: '2026-02-24', fatalities: 6, source: 'Mock', eventType: 'Battles' },
+    { id: 'e11', type: 'explosion', title: 'IED detonation on convoy route', country: 'Syria', location: 'Idlib',
+      lat: 35.93, lng: 36.63, date: '2026-02-23', fatalities: 3, source: 'Mock', eventType: 'Explosions/Remote violence' },
+    { id: 'e12', type: 'protest', title: 'Pro-democracy rally dispersed', country: 'Iran', location: 'Tehran',
+      lat: 35.69, lng: 51.39, date: '2026-02-22', fatalities: 0, source: 'Mock', eventType: 'Protests' },
+  ];
+  return events;
+}
+
 export function getConflictZones() {
   return [
-    {
-      id: 'ukraine',
-      name: 'Eastern Ukraine Conflict Zone',
-      color: '#ef444480',
-      intensity: 'high',
-      bounds: [[46.5, 33.0], [50.5, 40.0]],
-    },
-    {
-      id: 'syria',
-      name: 'Syrian Civil War Zone',
-      color: '#ef444460',
-      intensity: 'high',
-      bounds: [[33.0, 35.5], [37.0, 42.5]],
-    },
-    {
-      id: 'yemen',
-      name: 'Yemen Conflict Zone',
-      color: '#f9731680',
-      intensity: 'moderate',
-      bounds: [[12.5, 42.5], [18.0, 54.0]],
-    },
-    {
-      id: 'sudan',
-      name: 'Sudan Crisis Zone',
-      color: '#f9731660',
-      intensity: 'high',
-      bounds: [[10.0, 25.0], [20.0, 37.0]],
-    },
-    {
-      id: 'myanmar',
-      name: 'Myanmar Civil Conflict',
-      color: '#f59e0b50',
-      intensity: 'moderate',
-      bounds: [[16.0, 94.0], [24.0, 100.0]],
-    },
+    { id: 'z1', name: 'Ukraine Conflict Zone', country: 'Ukraine',
+      bounds: [[46, 32], [52, 40]], color: '#ef4444', severity: 'critical', eventCount: 45, fatalities: 320 },
+    { id: 'z2', name: 'Gaza Conflict Zone', country: 'Palestine',
+      bounds: [[31, 34], [32, 35]], color: '#ef4444', severity: 'critical', eventCount: 38, fatalities: 280 },
+    { id: 'z3', name: 'Sudan Civil War', country: 'Sudan',
+      bounds: [[10, 22], [20, 36]], color: '#f97316', severity: 'high', eventCount: 25, fatalities: 150 },
+    { id: 'z4', name: 'Myanmar Conflict', country: 'Myanmar',
+      bounds: [[10, 92], [28, 101]], color: '#f59e0b', severity: 'moderate', eventCount: 15, fatalities: 45 },
+    { id: 'z5', name: 'DR Congo Eastern Front', country: 'DR Congo',
+      bounds: [[-5, 25], [5, 31]], color: '#f97316', severity: 'high', eventCount: 22, fatalities: 90 },
+    { id: 'z6', name: 'Somalia Instability', country: 'Somalia',
+      bounds: [[-2, 40], [12, 52]], color: '#f59e0b', severity: 'moderate', eventCount: 12, fatalities: 35 },
+    { id: 'z7', name: 'Syria/Iraq Border Zone', country: 'Syria',
+      bounds: [[33, 35], [37, 45]], color: '#f59e0b', severity: 'moderate', eventCount: 10, fatalities: 25 },
   ];
 }
 
-/**
- * Get flight restriction zones (simplified mock)
- */
+// Flight restriction zones (static)
 export function getFlightRestrictions() {
   return [
-    {
-      id: 'ukr_east',
-      name: 'Eastern Ukraine Airspace Closure',
-      type: 'CLOSED',
-      color: '#ef444430',
-      borderColor: '#ef4444',
-      bounds: [[46.0, 32.0], [51.0, 41.0]],
-    },
-    {
-      id: 'syria_all',
-      name: 'Syrian Airspace Restriction',
-      type: 'RESTRICTED',
-      color: '#f5720830',
-      borderColor: '#f97316',
-      bounds: [[32.5, 35.0], [37.5, 42.5]],
-    },
-    {
-      id: 'yemen_all',
-      name: 'Yemen Airspace Warning',
-      type: 'WARNING',
-      color: '#f59e0b20',
-      borderColor: '#f59e0b',
-      bounds: [[12.0, 42.0], [18.5, 54.5]],
-    },
-    {
-      id: 'red_sea',
-      name: 'Red Sea / Bab al-Mandab',
-      type: 'WARNING',
-      color: '#f59e0b20',
-      borderColor: '#f59e0b',
-      bounds: [[11.5, 40.5], [15.5, 44.5]],
-    },
+    { id: 'fr1', label: 'Ukraine NOTAM', bounds: [[44, 22], [52, 40]], color: '#ef4444' },
+    { id: 'fr2', label: 'Iraq Restriction', bounds: [[29, 38], [37, 49]], color: '#f97316' },
+    { id: 'fr3', label: 'Iran Caution Area', bounds: [[25, 44], [40, 63]], color: '#f59e0b' },
+    { id: 'fr4', label: 'Libya NTL', bounds: [[19, 9], [34, 26]], color: '#f97316' },
   ];
-}
-
-/**
- * Get country info data for popups
- */
-export function getCountryInfo() {
-  return {
-    Ukraine: { population: '44M', gdp: '$200B', status: 'Active Conflict', sanctions: 'Sanctioned (Russia)', refugees: '6.5M' },
-    Syria: { population: '22M', gdp: '$12B', status: 'Civil War', sanctions: 'Multiple', refugees: '5.6M' },
-    Yemen: { population: '33M', gdp: '$22B', status: 'Civil War', sanctions: 'Partial', refugees: '4.5M' },
-    Sudan: { population: '47M', gdp: '$35B', status: 'Civil War', sanctions: 'Multiple', refugees: '1.5M' },
-    Myanmar: { population: '55M', gdp: '$65B', status: 'Military Coup', sanctions: 'Targeted', refugees: '1.2M' },
-    Iraq: { population: '42M', gdp: '$270B', status: 'Post-Conflict', sanctions: 'Limited', refugees: '250K' },
-    Afghanistan: { population: '40M', gdp: '$14B', status: 'Taliban Rule', sanctions: 'Comprehensive', refugees: '2.6M' },
-  };
 }

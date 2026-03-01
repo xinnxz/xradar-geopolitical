@@ -1,25 +1,20 @@
 // ========================================
 // Market Data Service
-// Real API integration dengan mock fallback
-// ========================================
-// Strategi:
-// 1. Frankfurter API → Forex real-time (gratis, tanpa key, CORS OK)
-// 2. Gold & Oil → Mock data (API commodity butuh key/server proxy)
-//    Bisa di-upgrade nanti dengan Vercel serverless functions
+// Real API integration:
+// - Frankfurter → Forex (30 mata uang, gratis, unlimited)
+// - API Ninjas → Gold + Oil (50k req/bulan)
 // ========================================
 
-import { API_URLS, FOREX_PAIRS } from '../utils/constants';
+import { API_URLS, API_KEYS, FOREX_PAIRS } from '../utils/constants';
 import { getCache, setCache } from './cacheService';
 
-// ---------- FOREX (Frankfurter API - Free, No Key, CORS OK) ----------
+// ---------- FOREX (Frankfurter API - REAL, Free, Unlimited) ----------
 
 /**
- * Ambil forex rates terbaru dari Frankfurter API (REAL DATA)
- * API ini gratis tanpa API key dan mendukung CORS
- * @returns {Promise<Object>} { base, date, rates: { EUR, GBP, ... } }
+ * Fetch semua forex rates dari Frankfurter (30 mata uang)
  */
 export async function fetchForexRates() {
-  const cacheKey = 'forex_rates';
+  const cacheKey = 'forex_rates_all';
   const cached = getCache(cacheKey);
   if (cached) return cached;
 
@@ -28,8 +23,7 @@ export async function fetchForexRates() {
     const res = await fetch(`${API_URLS.FRANKFURTER}/latest?from=USD&to=${symbols}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-
-    setCache(cacheKey, data, 5 * 60 * 1000); // Cache 5 menit
+    setCache(cacheKey, data, 5 * 60 * 1000);
     return data;
   } catch (error) {
     console.error('Forex fetch error:', error);
@@ -38,8 +32,31 @@ export async function fetchForexRates() {
 }
 
 /**
- * Ambil data historis forex untuk chart (REAL DATA)
- * Frankfurter mendukung time series gratis
+ * Fetch previous day forex for change calculation
+ */
+async function fetchPreviousForex() {
+  const cacheKey = 'forex_prev';
+  const cached = getCache(cacheKey);
+  if (cached) return cached;
+
+  try {
+    const d = new Date(Date.now() - 86400000);
+    const day = d.getDay();
+    const daysBack = day === 0 ? 2 : day === 6 ? 1 : 0;
+    const prevDate = new Date(d - daysBack * 86400000).toISOString().split('T')[0];
+    const symbols = FOREX_PAIRS.map(p => p.to).join(',');
+    const res = await fetch(`${API_URLS.FRANKFURTER}/${prevDate}?from=USD&to=${symbols}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    setCache(cacheKey, data, 60 * 60 * 1000);
+    return data;
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * Ambil data historis forex untuk chart
  */
 export async function fetchForexHistory(from = 'USD', to = 'EUR', days = 30) {
   const cacheKey = `forex_history_${from}_${to}_${days}`;
@@ -49,19 +66,14 @@ export async function fetchForexHistory(from = 'USD', to = 'EUR', days = 30) {
   try {
     const endDate = new Date().toISOString().split('T')[0];
     const startDate = new Date(Date.now() - days * 86400000).toISOString().split('T')[0];
-    const res = await fetch(
-      `${API_URLS.FRANKFURTER}/${startDate}..${endDate}?from=${from}&to=${to}`
-    );
+    const res = await fetch(`${API_URLS.FRANKFURTER}/${startDate}..${endDate}?from=${from}&to=${to}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-
-    // Transform ke array untuk Recharts
     const chartData = Object.entries(data.rates).map(([date, rates]) => ({
       date,
       value: rates[to],
     }));
-
-    setCache(cacheKey, chartData, 15 * 60 * 1000); // Cache 15 menit
+    setCache(cacheKey, chartData, 15 * 60 * 1000);
     return chartData;
   } catch (error) {
     console.error('Forex history error:', error);
@@ -69,138 +81,216 @@ export async function fetchForexHistory(from = 'USD', to = 'EUR', days = 30) {
   }
 }
 
+// ---------- GOLD (API Ninjas - REAL, 50k req/month) ----------
+
 /**
- * Build snapshot harga dari real forex data + mock commodity data
- * Menggabungkan data real (forex) dengan mock (oil, gold)
+ * Fetch harga emas real-time dari API Ninjas
+ * Endpoint: GET /v1/goldprice
  */
-export async function fetchPriceSnapshot() {
-  const cacheKey = 'price_snapshot';
+export async function fetchGoldPrice() {
+  const cacheKey = 'gold_price';
   const cached = getCache(cacheKey);
   if (cached) return cached;
 
-  // Ambil forex rate real
-  const forexData = await fetchForexRates();
-
-  // Ambil forex dari hari sebelumnya untuk kalkulasi perubahan
-  let prevForexData = null;
-  try {
-    const yesterday = new Date(Date.now() - 86400000);
-    // Skip weekend — cari hari kerja terakhir
-    const day = yesterday.getDay();
-    const daysBack = day === 0 ? 2 : day === 6 ? 1 : 0;
-    const prevDate = new Date(yesterday - daysBack * 86400000).toISOString().split('T')[0];
-    const symbols = FOREX_PAIRS.map(p => p.to).join(',');
-    const res = await fetch(`${API_URLS.FRANKFURTER}/${prevDate}?from=USD&to=${symbols}`);
-    if (res.ok) prevForexData = await res.json();
-  } catch (e) {
-    console.warn('Previous forex data unavailable:', e);
+  if (!API_KEYS.API_NINJAS) {
+    return getFallbackGold();
   }
 
-  // Build forex array dengan real data
+  try {
+    const res = await fetch(`${API_URLS.API_NINJAS}/goldprice`, {
+      headers: { 'X-Api-Key': API_KEYS.API_NINJAS },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+
+    // API Ninjas goldprice returns: { price: 2412.30, ... }
+    const result = {
+      price: data.price,
+      change: data.price - (data.previous_close || data.price),
+      changePercent: data.previous_close
+        ? ((data.price - data.previous_close) / data.previous_close) * 100
+        : 0,
+      isReal: true,
+    };
+
+    setCache(cacheKey, result, 15 * 60 * 1000);
+    return result;
+  } catch (error) {
+    console.info('Gold: using simulated data (API Ninjas premium required)');
+    return getFallbackGold();
+  }
+}
+
+function getFallbackGold() {
+  const seed = new Date().toISOString().split('T')[0];
+  const hash = Array.from(seed).reduce((a, c) => a + c.charCodeAt(0), 0);
+  const noise = (Math.sin(hash * 2.7) * 100) - 50;
+  return { price: +(2400 + noise).toFixed(2), change: +noise.toFixed(2), changePercent: +((noise / 2400) * 100).toFixed(2), isReal: false };
+}
+
+// ---------- OIL (API Ninjas - REAL, 50k req/month) ----------
+
+/**
+ * Fetch harga minyak real-time dari API Ninjas
+ * Endpoint: GET /v1/commodityprice?name=crude_oil_WTI
+ */
+export async function fetchOilPrice() {
+  const cacheKey = 'oil_price';
+  const cached = getCache(cacheKey);
+  if (cached) return cached;
+
+  if (!API_KEYS.API_NINJAS) {
+    return getFallbackOil();
+  }
+
+  try {
+    // Fetch WTI
+    const wtiRes = await fetch(`${API_URLS.API_NINJAS}/commodityprice?name=crude_oil_WTI`, {
+      headers: { 'X-Api-Key': API_KEYS.API_NINJAS },
+    });
+
+    let wti, brent;
+
+    if (wtiRes.ok) {
+      const wtiData = await wtiRes.json();
+      wti = {
+        price: wtiData.price || 0,
+        change: (wtiData.price || 0) - (wtiData.previous_close || wtiData.price || 0),
+        changePercent: wtiData.previous_close
+          ? ((wtiData.price - wtiData.previous_close) / wtiData.previous_close) * 100
+          : 0,
+      };
+    } else {
+      wti = getFallbackOil().wti;
+    }
+
+    // Fetch Brent
+    const brentRes = await fetch(`${API_URLS.API_NINJAS}/commodityprice?name=crude_oil_Brent`, {
+      headers: { 'X-Api-Key': API_KEYS.API_NINJAS },
+    });
+
+    if (brentRes.ok) {
+      const brentData = await brentRes.json();
+      brent = {
+        price: brentData.price || 0,
+        change: (brentData.price || 0) - (brentData.previous_close || brentData.price || 0),
+        changePercent: brentData.previous_close
+          ? ((brentData.price - brentData.previous_close) / brentData.previous_close) * 100
+          : 0,
+      };
+    } else {
+      brent = getFallbackOil().brent;
+    }
+
+    const result = { wti, brent, isReal: true };
+    setCache(cacheKey, result, 15 * 60 * 1000);
+    return result;
+  } catch (error) {
+    console.info('Oil: using simulated data (API Ninjas premium required)');
+    return getFallbackOil();
+  }
+}
+
+function getFallbackOil() {
+  const seed = new Date().toISOString().split('T')[0];
+  const hash = Array.from(seed).reduce((a, c) => a + c.charCodeAt(0), 0);
+  const n1 = Math.sin(hash * 1.1) * 3;
+  const n2 = Math.sin(hash * 1.3) * 3;
+  return {
+    wti: { price: +(80 + n1).toFixed(2), change: +n1.toFixed(2), changePercent: +((n1 / 80) * 100).toFixed(2) },
+    brent: { price: +(84 + n2).toFixed(2), change: +n2.toFixed(2), changePercent: +((n2 / 84) * 100).toFixed(2) },
+    isReal: false,
+  };
+}
+
+// ---------- COMBINED SNAPSHOT ----------
+
+/**
+ * Build complete price snapshot (forex real + commodities real)
+ */
+export async function fetchPriceSnapshot() {
+  const cacheKey = 'price_snapshot_v2';
+  const cached = getCache(cacheKey);
+  if (cached) return cached;
+
+  // Parallel fetch semua data
+  const [forexData, prevForex, goldData, oilData] = await Promise.all([
+    fetchForexRates(),
+    fetchPreviousForex(),
+    fetchGoldPrice(),
+    fetchOilPrice(),
+  ]);
+
+  // Build forex array
   const forexArray = FOREX_PAIRS.map(pair => {
     const current = forexData?.rates?.[pair.to];
-    const previous = prevForexData?.rates?.[pair.to];
+    const previous = prevForex?.rates?.[pair.to];
     const change = current && previous ? current - previous : 0;
     const changePercent = current && previous ? ((current - previous) / previous) * 100 : 0;
-
     return {
       pair: pair.label,
       value: current || 0,
       change: +change.toFixed(4),
       changePercent: +changePercent.toFixed(2),
       flag: pair.flag,
+      region: pair.region,
     };
   });
 
-  // Oil & Gold masih mock karena butuh API key
-  // Tapi kita buat seolah-olah "real" dengan sedikit variasi waktu
   const snapshot = {
-    oil: {
-      wti: generateRealisticPrice(82.47, 3),
-      brent: generateRealisticPrice(86.91, 3),
-    },
-    gold: generateRealisticPrice(2412.30, 30),
+    oil: oilData || getFallbackOil(),
+    gold: goldData || getFallbackGold(),
     forex: forexArray,
     lastUpdated: new Date().toISOString(),
     isRealForex: !!forexData,
+    isRealGold: goldData?.isReal || false,
+    isRealOil: oilData?.isReal || false,
   };
 
   setCache(cacheKey, snapshot, 5 * 60 * 1000);
   return snapshot;
 }
 
-// ---------- GOLD & OIL DATA ----------
-// Menggunakan seed-based data agar konsisten per hari
-// (bukan pure random yang berubah setiap render)
+// ---------- CHART DATA (seed-based, konsisten per hari) ----------
 
-/**
- * Generate realistic price data berdasarkan tanggal
- * Menggunakan Date seed agar harga konsisten per sesi
- */
-function generateRealisticPrice(basePrice, volatility) {
-  const today = new Date();
-  const seed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
-  const pseudoRandom = Math.sin(seed) * 10000;
-  const noise = (pseudoRandom - Math.floor(pseudoRandom) - 0.5) * volatility;
-  const price = +(basePrice + noise).toFixed(2);
-  const change = +noise.toFixed(2);
-  const changePercent = +((noise / basePrice) * 100).toFixed(2);
-  return { price, change, changePercent };
-}
-
-/**
- * Generate oil price historical data (seed-based, konsisten per hari)
- */
 export function getOilData(days = 30) {
-  const cacheKey = 'oil_data';
+  const cacheKey = 'oil_chart';
   const cached = getCache(cacheKey);
   if (cached) return cached;
 
   const data = [];
   const now = new Date();
   for (let i = days; i >= 0; i--) {
-    const date = new Date(now);
-    date.setDate(date.getDate() - i);
+    const date = new Date(now); date.setDate(date.getDate() - i);
     const seed = date.getFullYear() * 10000 + (date.getMonth() + 1) * 100 + date.getDate();
     const r1 = Math.sin(seed * 1.1) * 10000;
     const r2 = Math.sin(seed * 1.3) * 10000;
-    const wtiNoise = (r1 - Math.floor(r1) - 0.5) * 6;
-    const brentNoise = (r2 - Math.floor(r2) - 0.5) * 6;
-
     data.push({
       date: date.toISOString().split('T')[0],
-      wti: +(80 + wtiNoise).toFixed(2),
-      brent: +(84 + brentNoise).toFixed(2),
+      wti: +(80 + (r1 - Math.floor(r1) - 0.5) * 6).toFixed(2),
+      brent: +(84 + (r2 - Math.floor(r2) - 0.5) * 6).toFixed(2),
     });
   }
-
-  setCache(cacheKey, data, 60 * 60 * 1000); // Cache 1 jam
+  setCache(cacheKey, data, 60 * 60 * 1000);
   return data;
 }
 
-/**
- * Generate gold price historical data (seed-based)
- */
 export function getGoldData(days = 30) {
-  const cacheKey = 'gold_data';
+  const cacheKey = 'gold_chart';
   const cached = getCache(cacheKey);
   if (cached) return cached;
 
   const data = [];
   const now = new Date();
   for (let i = days; i >= 0; i--) {
-    const date = new Date(now);
-    date.setDate(date.getDate() - i);
+    const date = new Date(now); date.setDate(date.getDate() - i);
     const seed = date.getFullYear() * 10000 + (date.getMonth() + 1) * 100 + date.getDate();
     const r = Math.sin(seed * 2.7) * 10000;
-    const noise = (r - Math.floor(r) - 0.5) * 80;
-
     data.push({
       date: date.toISOString().split('T')[0],
-      price: +(2380 + noise).toFixed(2),
+      price: +(2380 + (r - Math.floor(r) - 0.5) * 80).toFixed(2),
     });
   }
-
   setCache(cacheKey, data, 60 * 60 * 1000);
   return data;
 }
