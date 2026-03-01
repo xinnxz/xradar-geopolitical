@@ -4,6 +4,7 @@
 // Fetches gold + oil prices from Alpha Vantage (server-side)
 // ========================================
 
+// Server-side cache (persists between warm invocations)
 let cache = {};
 const CACHE_TTL = 60 * 60 * 1000; // 1 hour cache (hemat kuota: 25 req/day)
 
@@ -13,43 +14,90 @@ function getCached(key) {
   return null;
 }
 
-async function fetchAlphaVantage(fn) {
-  const apiKey = process.env.ALPHA_VANTAGE_KEY;
-  if (!apiKey) throw new Error('ALPHA_VANTAGE_KEY not configured');
-
-  const url = `https://www.alphavantage.co/query?function=${fn}&interval=daily&apikey=${apiKey}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Alpha Vantage error: ${res.status}`);
-  const data = await res.json();
-
-  if (data['Error Message'] || data['Note']) {
-    throw new Error(data['Error Message'] || data['Note']);
-  }
-
-  return data;
+function setMemoCache(key, data) {
+  cache[key] = { data, time: Date.now() };
 }
 
-function parseAlphaVantageData(data) {
-  // Alpha Vantage commodity response: { name, interval, unit, data: [{date, value}, ...] }
-  const points = data?.data;
-  if (!points?.length) return null;
+/**
+ * Gold price via GOLD_SILVER_SPOT endpoint
+ * Response format: { nominal: "XAUUSD", timestamp: "...", price: "5278.73" }
+ */
+async function fetchGoldPrice(apiKey) {
+  const cached = getCached('gold');
+  if (cached) return cached;
 
-  // Get latest and previous values
-  const latest = points[0];
-  const previous = points[1];
+  const url = `https://www.alphavantage.co/query?function=GOLD_SILVER_SPOT&symbol=GOLD&apikey=${apiKey}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Gold API error: ${res.status}`);
+  const data = await res.json();
+
+  if (data['Error Message'] || data['Note'] || data['Information']) {
+    throw new Error(data['Error Message'] || data['Note'] || data['Information']);
+  }
+
+  const price = parseFloat(data.price);
+  if (isNaN(price)) throw new Error('Invalid gold price data');
+
+  const result = {
+    price,
+    change: 0, // Spot doesn't give previous close
+    changePercent: 0,
+    date: data.timestamp,
+    unit: 'USD/oz',
+  };
+
+  setMemoCache('gold', result);
+  return result;
+}
+
+/**
+ * Oil price via WTI or BRENT endpoint
+ * Response format: { name, interval, unit, data: [{date, value}, ...] }
+ * Data is sorted newest first
+ */
+async function fetchOilPrice(type, apiKey) {
+  const cached = getCached(type);
+  if (cached) return cached;
+
+  const fn = type === 'wti' ? 'WTI' : 'BRENT';
+  const url = `https://www.alphavantage.co/query?function=${fn}&interval=daily&apikey=${apiKey}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Oil ${type} API error: ${res.status}`);
+  const data = await res.json();
+
+  if (data['Error Message'] || data['Note'] || data['Information']) {
+    throw new Error(data['Error Message'] || data['Note'] || data['Information']);
+  }
+
+  const points = data?.data;
+  if (!points?.length) throw new Error(`No ${type} data points`);
+
+  // Find latest valid data point (skip dots ".")
+  let latest = null, previous = null;
+  for (const point of points) {
+    if (point.value !== '.' && !isNaN(parseFloat(point.value))) {
+      if (!latest) latest = point;
+      else if (!previous) { previous = point; break; }
+    }
+  }
+
+  if (!latest) throw new Error(`No valid ${type} price data`);
 
   const price = parseFloat(latest.value);
   const prevPrice = previous ? parseFloat(previous.value) : price;
   const change = +(price - prevPrice).toFixed(2);
   const changePercent = prevPrice ? +((change / prevPrice) * 100).toFixed(2) : 0;
 
-  return {
+  const result = {
     price,
     change,
     changePercent,
     date: latest.date,
-    unit: data.unit || 'USD',
+    unit: data.unit || 'USD/barrel',
   };
+
+  setMemoCache(type, result);
+  return result;
 }
 
 export default async function handler(req, res) {
@@ -59,59 +107,42 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
+  const apiKey = process.env.ALPHA_VANTAGE_KEY;
+  if (!apiKey) {
+    return res.status(500).json({ error: 'ALPHA_VANTAGE_KEY not configured' });
+  }
+
   try {
     const { type = 'all' } = req.query;
-
     const result = {};
 
-    // Gold
+    // Fetch gold
     if (type === 'all' || type === 'gold') {
-      const goldCached = getCached('gold');
-      if (goldCached) {
-        result.gold = goldCached;
-      } else {
-        try {
-          const goldData = await fetchAlphaVantage('GOLD');
-          result.gold = parseAlphaVantageData(goldData);
-          if (result.gold) cache.gold = { data: result.gold, time: Date.now() };
-        } catch (e) {
-          result.gold = null;
-          result.goldError = e.message;
-        }
+      try {
+        result.gold = await fetchGoldPrice(apiKey);
+      } catch (e) {
+        result.gold = null;
+        result.goldError = e.message;
       }
     }
 
-    // WTI Crude Oil
+    // Fetch WTI Crude Oil
     if (type === 'all' || type === 'wti') {
-      const wtiCached = getCached('wti');
-      if (wtiCached) {
-        result.wti = wtiCached;
-      } else {
-        try {
-          const wtiData = await fetchAlphaVantage('WTI');
-          result.wti = parseAlphaVantageData(wtiData);
-          if (result.wti) cache.wti = { data: result.wti, time: Date.now() };
-        } catch (e) {
-          result.wti = null;
-          result.wtiError = e.message;
-        }
+      try {
+        result.wti = await fetchOilPrice('wti', apiKey);
+      } catch (e) {
+        result.wti = null;
+        result.wtiError = e.message;
       }
     }
 
-    // Brent Crude Oil
+    // Fetch Brent Crude Oil
     if (type === 'all' || type === 'brent') {
-      const brentCached = getCached('brent');
-      if (brentCached) {
-        result.brent = brentCached;
-      } else {
-        try {
-          const brentData = await fetchAlphaVantage('BRENT');
-          result.brent = parseAlphaVantageData(brentData);
-          if (result.brent) cache.brent = { data: result.brent, time: Date.now() };
-        } catch (e) {
-          result.brent = null;
-          result.brentError = e.message;
-        }
+      try {
+        result.brent = await fetchOilPrice('brent', apiKey);
+      } catch (e) {
+        result.brent = null;
+        result.brentError = e.message;
       }
     }
 
