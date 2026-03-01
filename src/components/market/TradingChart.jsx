@@ -1,11 +1,19 @@
 // ========================================
 // TradingChart — Professional Candlestick Chart
-// Uses TradingView lightweight-charts
+// Uses TradingView lightweight-charts v5
 // Binance/OKX-style dark theme
 // ========================================
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { createChart, ColorType, CrosshairMode } from 'lightweight-charts';
+import {
+    createChart,
+    ColorType,
+    CrosshairMode,
+    CandlestickSeries,
+    AreaSeries,
+    LineSeries,
+    HistogramSeries,
+} from 'lightweight-charts';
 
 /**
  * Professional candlestick chart with volume overlay
@@ -17,7 +25,6 @@ import { createChart, ColorType, CrosshairMode } from 'lightweight-charts';
  * @param {'candlestick'|'area'|'line'} props.chartType - default 'candlestick'
  * @param {number} props.height - chart height in px
  * @param {string} props.accentColor - e.g. '#f0b90b'
- * @param {Function} props.onCrosshairMove - (param) => void
  */
 export default function TradingChart({
     data = [],
@@ -89,35 +96,37 @@ export default function TradingChart({
 
         chartRef.current = chart;
 
-        // Main series
+        // Main series — v5 API: chart.addSeries(SeriesType, options)
         let mainSeries;
+        const priceFormat = { type: 'price', precision, minMove: Math.pow(10, -precision) };
+
         if (chartType === 'candlestick') {
-            mainSeries = chart.addCandlestickSeries({
+            mainSeries = chart.addSeries(CandlestickSeries, {
                 upColor: '#0ecb81',
                 downColor: '#f6465d',
                 borderUpColor: '#0ecb81',
                 borderDownColor: '#f6465d',
                 wickUpColor: '#0ecb81',
                 wickDownColor: '#f6465d',
-                priceFormat: { type: 'price', precision, minMove: Math.pow(10, -precision) },
+                priceFormat,
             });
         } else if (chartType === 'area') {
-            mainSeries = chart.addAreaSeries({
+            mainSeries = chart.addSeries(AreaSeries, {
                 topColor: `${accentColor}40`,
                 bottomColor: `${accentColor}05`,
                 lineColor: accentColor,
                 lineWidth: 2,
-                priceFormat: { type: 'price', precision, minMove: Math.pow(10, -precision) },
+                priceFormat,
                 crosshairMarkerVisible: true,
                 crosshairMarkerRadius: 4,
                 crosshairMarkerBorderColor: accentColor,
                 crosshairMarkerBackgroundColor: '#131722',
             });
         } else {
-            mainSeries = chart.addLineSeries({
+            mainSeries = chart.addSeries(LineSeries, {
                 color: accentColor,
                 lineWidth: 2,
-                priceFormat: { type: 'price', precision, minMove: Math.pow(10, -precision) },
+                priceFormat,
                 crosshairMarkerVisible: true,
                 crosshairMarkerRadius: 4,
             });
@@ -144,7 +153,7 @@ export default function TradingChart({
         // Volume histogram (if data has volume)
         const hasVolume = data.some(d => d.volume != null);
         if (hasVolume) {
-            const volumeSeries = chart.addHistogramSeries({
+            const volumeSeries = chart.addSeries(HistogramSeries, {
                 color: '#26a69a',
                 priceFormat: { type: 'volume' },
                 priceScaleId: 'volume',
