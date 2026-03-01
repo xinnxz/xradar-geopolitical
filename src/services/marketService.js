@@ -81,44 +81,51 @@ export async function fetchForexHistory(from = 'USD', to = 'EUR', days = 30) {
   }
 }
 
-// ---------- GOLD (API Ninjas - REAL, 50k req/month) ----------
+// ---------- GOLD + OIL (Alpha Vantage via Vercel proxy) ----------
 
 /**
- * Fetch harga emas real-time dari API Ninjas
- * Endpoint: GET /v1/goldprice
+ * Fetch commodity prices dari Vercel proxy /api/commodities
+ * Proxy uses Alpha Vantage (25 req/day free, 1h cache server-side)
+ * Di localhost: fallback ke simulated data
+ */
+async function fetchCommoditiesFromProxy() {
+  const cacheKey = 'commodities_proxy';
+  const cached = getCache(cacheKey);
+  if (cached) return cached;
+
+  // Only use proxy on Vercel (not localhost)
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return null;
+  }
+
+  try {
+    const res = await fetch('/api/commodities?type=all');
+    if (!res.ok) throw new Error(`Proxy error: ${res.status}`);
+    const data = await res.json();
+    setCache(cacheKey, data, 30 * 60 * 1000); // Cache 30 min di client
+    return data;
+  } catch (error) {
+    console.info('Commodities proxy unavailable, using fallback');
+    return null;
+  }
+}
+
+/**
+ * Fetch gold price — dari proxy atau fallback
  */
 export async function fetchGoldPrice() {
   const cacheKey = 'gold_price';
   const cached = getCache(cacheKey);
   if (cached) return cached;
 
-  if (!API_KEYS.API_NINJAS) {
-    return getFallbackGold();
-  }
-
-  try {
-    const res = await fetch(`${API_URLS.API_NINJAS}/goldprice`, {
-      headers: { 'X-Api-Key': API_KEYS.API_NINJAS },
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-
-    // API Ninjas goldprice returns: { price: 2412.30, ... }
-    const result = {
-      price: data.price,
-      change: data.price - (data.previous_close || data.price),
-      changePercent: data.previous_close
-        ? ((data.price - data.previous_close) / data.previous_close) * 100
-        : 0,
-      isReal: true,
-    };
-
-    setCache(cacheKey, result, 15 * 60 * 1000);
+  const proxy = await fetchCommoditiesFromProxy();
+  if (proxy?.gold) {
+    const result = { ...proxy.gold, isReal: true };
+    setCache(cacheKey, result, 30 * 60 * 1000);
     return result;
-  } catch (error) {
-    console.info('Gold: using simulated data (API Ninjas premium required)');
-    return getFallbackGold();
   }
+
+  return getFallbackGold();
 }
 
 function getFallbackGold() {
@@ -128,67 +135,26 @@ function getFallbackGold() {
   return { price: +(2400 + noise).toFixed(2), change: +noise.toFixed(2), changePercent: +((noise / 2400) * 100).toFixed(2), isReal: false };
 }
 
-// ---------- OIL (API Ninjas - REAL, 50k req/month) ----------
-
 /**
- * Fetch harga minyak real-time dari API Ninjas
- * Endpoint: GET /v1/commodityprice?name=crude_oil_WTI
+ * Fetch oil price (WTI + Brent) — dari proxy atau fallback
  */
 export async function fetchOilPrice() {
   const cacheKey = 'oil_price';
   const cached = getCache(cacheKey);
   if (cached) return cached;
 
-  if (!API_KEYS.API_NINJAS) {
-    return getFallbackOil();
-  }
-
-  try {
-    // Fetch WTI
-    const wtiRes = await fetch(`${API_URLS.API_NINJAS}/commodityprice?name=crude_oil_WTI`, {
-      headers: { 'X-Api-Key': API_KEYS.API_NINJAS },
-    });
-
-    let wti, brent;
-
-    if (wtiRes.ok) {
-      const wtiData = await wtiRes.json();
-      wti = {
-        price: wtiData.price || 0,
-        change: (wtiData.price || 0) - (wtiData.previous_close || wtiData.price || 0),
-        changePercent: wtiData.previous_close
-          ? ((wtiData.price - wtiData.previous_close) / wtiData.previous_close) * 100
-          : 0,
-      };
-    } else {
-      wti = getFallbackOil().wti;
-    }
-
-    // Fetch Brent
-    const brentRes = await fetch(`${API_URLS.API_NINJAS}/commodityprice?name=crude_oil_Brent`, {
-      headers: { 'X-Api-Key': API_KEYS.API_NINJAS },
-    });
-
-    if (brentRes.ok) {
-      const brentData = await brentRes.json();
-      brent = {
-        price: brentData.price || 0,
-        change: (brentData.price || 0) - (brentData.previous_close || brentData.price || 0),
-        changePercent: brentData.previous_close
-          ? ((brentData.price - brentData.previous_close) / brentData.previous_close) * 100
-          : 0,
-      };
-    } else {
-      brent = getFallbackOil().brent;
-    }
-
-    const result = { wti, brent, isReal: true };
-    setCache(cacheKey, result, 15 * 60 * 1000);
+  const proxy = await fetchCommoditiesFromProxy();
+  if (proxy?.wti || proxy?.brent) {
+    const result = {
+      wti: proxy.wti || getFallbackOil().wti,
+      brent: proxy.brent || getFallbackOil().brent,
+      isReal: !!(proxy.wti || proxy.brent),
+    };
+    setCache(cacheKey, result, 30 * 60 * 1000);
     return result;
-  } catch (error) {
-    console.info('Oil: using simulated data (API Ninjas premium required)');
-    return getFallbackOil();
   }
+
+  return getFallbackOil();
 }
 
 function getFallbackOil() {
