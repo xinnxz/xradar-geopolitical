@@ -1,35 +1,33 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useState } from 'react';
+import Sidebar from './components/layout/Sidebar';
+import Header from './components/layout/Header';
+import Overview from './components/overview/Overview';
+import MarketPanel from './components/market/MarketPanel';
+import NewsFeed from './components/news/NewsFeed';
+import ConflictMap from './components/map/ConflictMap';
+import RiskPanel from './components/risk/RiskPanel';
+import './App.css';
 
-function App() {
-  const [count, setCount] = useState(0)
+const views = {
+  overview: Overview,
+  markets: MarketPanel,
+  news: NewsFeed,
+  map: ConflictMap,
+  risk: RiskPanel,
+};
+
+export default function App() {
+  const [activeView, setActiveView] = useState('overview');
+
+  const ActiveComponent = views[activeView] || Overview;
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <div className="app">
+      <Sidebar activeView={activeView} onViewChange={setActiveView} />
+      <Header riskScore={58} riskLevel="High" />
+      <main className="main-content">
+        <ActiveComponent key={activeView} />
+      </main>
+    </div>
+  );
 }
-
-export default App

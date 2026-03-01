@@ -1,0 +1,208 @@
+.overview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+/* Risk Banner */
+.overview__risk-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-md) var(--space-lg);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  gap: var(--space-lg);
+}
+
+.risk-banner__left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.risk-banner__title {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.risk-banner__level {
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.risk-banner__chart {
+  width: 200px;
+  height: 50px;
+}
+
+/* Price Cards */
+.overview__prices {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-md);
+}
+
+.mini-card {
+  padding: var(--space-md) var(--space-lg);
+}
+
+.mini-card__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-sm);
+}
+
+.mini-card__icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+}
+
+.mini-card__change {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.mini-card__value {
+  font-family: var(--font-mono);
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.mini-card__label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* Main Grid */
+.overview__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-md);
+}
+
+.overview__chart {
+  padding: var(--space-lg);
+}
+
+.overview__map {
+  padding: var(--space-lg);
+}
+
+.overview__map-container {
+  height: 200px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-bottom: var(--space-sm);
+}
+
+.overview__map-stat {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* News */
+.overview__news {
+  padding: var(--space-lg);
+}
+
+.overview__news-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.overview__news-item {
+  display: flex;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  border-radius: var(--radius-md);
+  transition: background var(--transition-fast);
+  cursor: pointer;
+}
+
+.overview__news-item:hover {
+  background: var(--bg-elevated);
+}
+
+.overview__news-badge {
+  width: 4px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.overview__news-badge[data-sentiment="negative"] { background: var(--accent-red); }
+.overview__news-badge[data-sentiment="positive"] { background: var(--accent-green); }
+.overview__news-badge[data-sentiment="neutral"] { background: var(--accent-blue); }
+
+.overview__news-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.overview__news-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.3;
+  margin-bottom: 4px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.overview__news-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.overview__news-source {
+  color: var(--accent-blue);
+  font-weight: 600;
+}
+
+.overview__news-time {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-md);
+}
+
+@media (max-width: 1024px) {
+  .overview__prices {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .overview__grid {
+    grid-template-columns: 1fr;
+  }
+}
