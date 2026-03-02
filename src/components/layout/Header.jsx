@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Clock, Wifi, WifiOff, AlertTriangle } from 'lucide-react';
 import { useGlobalData } from '../../hooks/useGlobalData';
+import ShareBar from './ShareBar';
 import './Header.css';
 
 export default function Header() {
@@ -54,6 +55,7 @@ export default function Header() {
             </div>
 
             <div className="header__right">
+                <ShareBar />
                 <div className="header__status">
                     {isOnline ? (
                         <span className="header__online"><Wifi size={14} /> Live</span>
