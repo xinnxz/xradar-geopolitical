@@ -126,37 +126,11 @@ export function buildConflictZones(events) {
 }
 
 // ========================================
-// MOCK DATA FALLBACK
+// NO MOCK DATA — real ACLED data only
 // ========================================
 
 export function getMockConflictEvents() {
-  const events = [
-    { id: 'e1', type: 'battle', title: 'Armed clash in Donetsk region', country: 'Ukraine', location: 'Donetsk',
-      lat: 48.0, lng: 37.8, date: '2026-02-28', fatalities: 12, source: 'Mock', eventType: 'Battles' },
-    { id: 'e2', type: 'explosion', title: 'Missile strike reported near Kharkiv', country: 'Ukraine', location: 'Kharkiv',
-      lat: 49.99, lng: 36.23, date: '2026-02-27', fatalities: 5, source: 'Mock', eventType: 'Explosions/Remote violence' },
-    { id: 'e3', type: 'battle', title: 'Military operation in Zaporizhzhia front', country: 'Ukraine', location: 'Zaporizhzhia',
-      lat: 47.84, lng: 35.14, date: '2026-02-26', fatalities: 8, source: 'Mock', eventType: 'Battles' },
-    { id: 'e4', type: 'explosion', title: 'Airstrike in northern Gaza', country: 'Palestine', location: 'Gaza',
-      lat: 31.52, lng: 34.46, date: '2026-02-28', fatalities: 15, source: 'Mock', eventType: 'Explosions/Remote violence' },
-    { id: 'e5', type: 'violence', title: 'Civilian casualties in Rafah', country: 'Palestine', location: 'Rafah',
-      lat: 31.30, lng: 34.25, date: '2026-02-27', fatalities: 7, source: 'Mock', eventType: 'Violence against civilians' },
-    { id: 'e6', type: 'battle', title: 'RSF-SAF clashes in Khartoum', country: 'Sudan', location: 'Khartoum',
-      lat: 15.55, lng: 32.53, date: '2026-02-26', fatalities: 20, source: 'Mock', eventType: 'Battles' },
-    { id: 'e7', type: 'explosion', title: 'Drone strike in El Fasher', country: 'Sudan', location: 'El Fasher',
-      lat: 13.63, lng: 25.35, date: '2026-02-25', fatalities: 9, source: 'Mock', eventType: 'Explosions/Remote violence' },
-    { id: 'e8', type: 'protest', title: 'Anti-government protest in Yangon', country: 'Myanmar', location: 'Yangon',
-      lat: 16.87, lng: 96.19, date: '2026-02-24', fatalities: 0, source: 'Mock', eventType: 'Protests' },
-    { id: 'e9', type: 'violence', title: 'Ethnic violence in Beni territory', country: 'DR Congo', location: 'Beni',
-      lat: 0.49, lng: 29.47, date: '2026-02-25', fatalities: 11, source: 'Mock', eventType: 'Violence against civilians' },
-    { id: 'e10', type: 'battle', title: 'Al-Shabaab attack on military base', country: 'Somalia', location: 'Mogadishu',
-      lat: 2.05, lng: 45.34, date: '2026-02-24', fatalities: 6, source: 'Mock', eventType: 'Battles' },
-    { id: 'e11', type: 'explosion', title: 'IED detonation on convoy route', country: 'Syria', location: 'Idlib',
-      lat: 35.93, lng: 36.63, date: '2026-02-23', fatalities: 3, source: 'Mock', eventType: 'Explosions/Remote violence' },
-    { id: 'e12', type: 'protest', title: 'Pro-democracy rally dispersed', country: 'Iran', location: 'Tehran',
-      lat: 35.69, lng: 51.39, date: '2026-02-22', fatalities: 0, source: 'Mock', eventType: 'Protests' },
-  ];
-  return events;
+  return [];
 }
 
 export function getConflictZones() {
