@@ -1,8 +1,12 @@
 // ========================================
 // Vercel Serverless Function: News Proxy
 // Route: /api/news
-// Fetches news from GNews API server-side
-// Sequential calls with delays to avoid rate limit
+// Features:
+// - Multi-key rotation (GNEWS_KEY, GNEWS_KEY_2, GNEWS_KEY_3...)
+// - Auto-switch on 403/429 (quota exceeded)
+// - Sequential calls with delays (anti rate-limit)
+// - Pagination support (page param)
+// - Never caches empty results
 // ========================================
 
 // Server-side cache
@@ -20,6 +24,68 @@ function setMemoCache(key, data) {
 }
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+// ========================================
+// API KEY ROTATION
+// Supports: GNEWS_KEY, GNEWS_KEY_2, GNEWS_KEY_3, ...
+// When a key gets 403/429, it's marked exhausted for 1 hour
+// ========================================
+const exhaustedKeys = new Map(); // key -> exhausted timestamp
+const EXHAUSTED_COOLDOWN = 60 * 60 * 1000; // 1 hour
+
+/**
+ * Collect all available GNews API keys from env vars
+ * Looks for: GNEWS_KEY, VITE_GNEWS_KEY, GNEWS_KEY_2, GNEWS_KEY_3, etc.
+ */
+function getAllApiKeys() {
+  const keys = [];
+
+  // Primary keys
+  if (process.env.GNEWS_KEY) keys.push(process.env.GNEWS_KEY);
+  else if (process.env.VITE_GNEWS_KEY) keys.push(process.env.VITE_GNEWS_KEY);
+
+  // Additional keys: GNEWS_KEY_2, GNEWS_KEY_3, ..., GNEWS_KEY_10
+  for (let i = 2; i <= 10; i++) {
+    const key = process.env[`GNEWS_KEY_${i}`];
+    if (key) keys.push(key);
+  }
+
+  return keys;
+}
+
+/**
+ * Get the next available (non-exhausted) API key
+ * Returns { key, index } or null if all exhausted
+ */
+function getAvailableKey() {
+  const allKeys = getAllApiKeys();
+  const now = Date.now();
+
+  for (let i = 0; i < allKeys.length; i++) {
+    const key = allKeys[i];
+    const exhaustedAt = exhaustedKeys.get(key);
+
+    // If key was exhausted but cooldown passed, remove it
+    if (exhaustedAt && now - exhaustedAt > EXHAUSTED_COOLDOWN) {
+      exhaustedKeys.delete(key);
+    }
+
+    // If key is not exhausted, use it
+    if (!exhaustedKeys.has(key)) {
+      return { key, index: i + 1, total: allKeys.length };
+    }
+  }
+
+  return null; // All keys exhausted
+}
+
+/**
+ * Mark a key as exhausted (403/429 received)
+ */
+function markKeyExhausted(key) {
+  exhaustedKeys.set(key, Date.now());
+  console.log(`🔑 Key ...${key.slice(-4)} exhausted, switching to next`);
+}
 
 // Category search queries
 const CATEGORY_QUERIES = {
@@ -53,26 +119,56 @@ function detectSentiment(text) {
   return 'neutral';
 }
 
-async function fetchGNewsArticles(query, apiKey, max = 10, page = 1) {
-  const q = encodeURIComponent(query);
-  const url = `https://gnews.io/api/v4/search?q=${q}&lang=en&max=${max}&page=${page}&sortby=publishedAt&apikey=${apiKey}`;
-  
-  const res = await fetch(url);
-  
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    console.error(`GNews error ${res.status}: ${text.substring(0, 200)}`);
-    throw new Error(`GNews API ${res.status}`);
+/**
+ * Fetch articles from GNews with key rotation
+ * If 403/429 → marks key exhausted and retries with next key
+ */
+async function fetchGNewsArticles(query, max = 10, page = 1) {
+  const maxRetries = getAllApiKeys().length;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    const keyInfo = getAvailableKey();
+    if (!keyInfo) {
+      throw new Error('All API keys exhausted. Try again in ~1 hour.');
+    }
+
+    const q = encodeURIComponent(query);
+    const url = `https://gnews.io/api/v4/search?q=${q}&lang=en&max=${max}&page=${page}&sortby=publishedAt&apikey=${keyInfo.key}`;
+
+    try {
+      const res = await fetch(url);
+
+      if (res.status === 403 || res.status === 429) {
+        // Quota exceeded → mark this key and try next
+        markKeyExhausted(keyInfo.key);
+        continue; // Try next key
+      }
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        console.error(`GNews error ${res.status}: ${text.substring(0, 200)}`);
+        throw new Error(`GNews API ${res.status}`);
+      }
+
+      const data = await res.json();
+      if (data.errors) {
+        // API key error → mark and try next
+        markKeyExhausted(keyInfo.key);
+        continue;
+      }
+
+      console.log(`✓ Using key #${keyInfo.index}/${keyInfo.total} (...${keyInfo.key.slice(-4)})`);
+      return data.articles || [];
+    } catch (e) {
+      if (e.message.includes('403') || e.message.includes('429')) {
+        markKeyExhausted(keyInfo.key);
+        continue;
+      }
+      throw e;
+    }
   }
-  
-  const data = await res.json();
-  
-  if (data.errors) {
-    console.error('GNews errors:', JSON.stringify(data.errors));
-    throw new Error(JSON.stringify(data.errors));
-  }
-  
-  return data.articles || [];
+
+  throw new Error('All API keys exhausted after rotation');
 }
 
 function transformArticle(article, category, index) {
@@ -106,12 +202,12 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  // Check BOTH possible env var names
-  const apiKey = process.env.GNEWS_KEY || process.env.VITE_GNEWS_KEY;
-  if (!apiKey) {
-    return res.status(500).json({ 
-      error: 'GNEWS_KEY not configured',
-      hint: 'Add GNEWS_KEY (or VITE_GNEWS_KEY) to Vercel Environment Variables',
+  // Check if ANY key is available
+  const allKeys = getAllApiKeys();
+  if (allKeys.length === 0) {
+    return res.status(500).json({
+      error: 'No GNEWS_KEY configured',
+      hint: 'Add GNEWS_KEY to Vercel env vars. For rotation, also add GNEWS_KEY_2, GNEWS_KEY_3, etc.',
       mock: true,
     });
   }
@@ -119,9 +215,9 @@ export default async function handler(req, res) {
   try {
     const { category = 'all', page = '1' } = req.query;
     const pageNum = parseInt(page) || 1;
-    const cacheKey = `news_${category}_p${pageNum}_v2`;
+    const cacheKey = `news_${category}_p${pageNum}_v3`;
 
-    // Check cache first (only if non-empty data was cached)
+    // Check cache first
     const cached = getCached(cacheKey);
     if (cached && cached.length > 0) {
       return res.status(200).json({
@@ -130,42 +226,39 @@ export default async function handler(req, res) {
         page: pageNum,
         cached: true,
         source: 'gnews',
+        keysAvailable: allKeys.length,
+        keysExhausted: exhaustedKeys.size,
       });
     }
 
     let articles = [];
 
     if (category === 'all') {
-      // Fetch categories SEQUENTIALLY with delays to avoid rate limit
-      // GNews free tier: max 1 req/sec, 100 req/day
       const categories = ['war', 'economy', 'energy', 'sanctions', 'diplomacy'];
-      
+
       for (let i = 0; i < categories.length; i++) {
         const cat = categories[i];
         try {
-          const raw = await fetchGNewsArticles(CATEGORY_QUERIES[cat], apiKey, 10, pageNum);
+          const raw = await fetchGNewsArticles(CATEGORY_QUERIES[cat], 10, pageNum);
           const transformed = raw.map((a, idx) => transformArticle(a, cat, idx + (pageNum - 1) * 10));
           articles.push(...transformed);
           console.log(`✓ ${cat}: ${raw.length} articles`);
         } catch (e) {
           console.error(`✗ ${cat}: ${e.message}`);
         }
-        
-        // Wait 1.2s between each call to avoid rate limit
-        if (i < categories.length - 1) {
-          await delay(1200);
-        }
+
+        if (i < categories.length - 1) await delay(1200);
       }
 
       articles = deduplicateArticles(articles);
       articles.sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
     } else {
       const query = CATEGORY_QUERIES[category] || CATEGORY_QUERIES.all;
-      const raw = await fetchGNewsArticles(query, apiKey, 10, pageNum);
+      const raw = await fetchGNewsArticles(query, 10, pageNum);
       articles = raw.map((a, i) => transformArticle(a, category, i + (pageNum - 1) * 10));
     }
 
-    // ONLY cache if we got actual results — never cache empty
+    // Only cache non-empty results
     if (articles.length > 0) {
       setMemoCache(cacheKey, articles);
     }
@@ -177,6 +270,8 @@ export default async function handler(req, res) {
       hasMore: articles.length > 0,
       cached: false,
       source: 'gnews',
+      keysAvailable: allKeys.length,
+      keysExhausted: exhaustedKeys.size,
     });
   } catch (error) {
     console.error('News proxy error:', error);
