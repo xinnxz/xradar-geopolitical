@@ -2,10 +2,12 @@
 // Footer — Copyright, Legal Links, Data Sources
 // ========================================
 
-import { Shield, FileText, AlertTriangle, Info, Heart } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Shield, FileText, AlertTriangle, Info } from 'lucide-react';
 import './Footer.css';
 
-export default function Footer({ onNavigate }) {
+export default function Footer() {
+    const navigate = useNavigate();
     const year = new Date().getFullYear();
 
     return (
@@ -20,19 +22,19 @@ export default function Footer({ onNavigate }) {
 
                 {/* Center: Legal links */}
                 <div className="site-footer__center">
-                    <button className="site-footer__link" onClick={() => onNavigate?.('about')}>
+                    <button className="site-footer__link" onClick={() => navigate('/about')}>
                         <Info size={11} /> About
                     </button>
                     <span className="site-footer__dot">·</span>
-                    <button className="site-footer__link" onClick={() => onNavigate?.('about')}>
+                    <button className="site-footer__link" onClick={() => navigate('/about')}>
                         <AlertTriangle size={11} /> Disclaimer
                     </button>
                     <span className="site-footer__dot">·</span>
-                    <button className="site-footer__link" onClick={() => onNavigate?.('about')}>
+                    <button className="site-footer__link" onClick={() => navigate('/about')}>
                         <Shield size={11} /> Privacy
                     </button>
                     <span className="site-footer__dot">·</span>
-                    <button className="site-footer__link" onClick={() => onNavigate?.('about')}>
+                    <button className="site-footer__link" onClick={() => navigate('/about')}>
                         <FileText size={11} /> Terms
                     </button>
                 </div>

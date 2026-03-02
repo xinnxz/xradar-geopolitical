@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { NavLink } from 'react-router-dom';
 import {
     LayoutDashboard, TrendingUp, Newspaper, Map, ShieldAlert,
     ChevronLeft, ChevronRight, Radio, Info
@@ -6,15 +7,15 @@ import {
 import './Sidebar.css';
 
 const navItems = [
-    { id: 'overview', label: 'Overview', Icon: LayoutDashboard },
-    { id: 'markets', label: 'Markets', Icon: TrendingUp },
-    { id: 'news', label: 'News Feed', Icon: Newspaper },
-    { id: 'map', label: 'Conflict Map', Icon: Map },
-    { id: 'risk', label: 'Risk Index', Icon: ShieldAlert },
-    { id: 'about', label: 'About', Icon: Info },
+    { path: '/', label: 'Overview', Icon: LayoutDashboard },
+    { path: '/markets', label: 'Markets', Icon: TrendingUp },
+    { path: '/news', label: 'News Feed', Icon: Newspaper },
+    { path: '/map', label: 'Conflict Map', Icon: Map },
+    { path: '/risk', label: 'Risk Index', Icon: ShieldAlert },
+    { path: '/about', label: 'About', Icon: Info },
 ];
 
-export default function Sidebar({ activeView, onViewChange }) {
+export default function Sidebar() {
     const [expanded, setExpanded] = useState(false);
 
     return (
@@ -29,17 +30,19 @@ export default function Sidebar({ activeView, onViewChange }) {
 
             {/* Navigation */}
             <nav className="sidebar__nav">
-                {navItems.map(({ id, label, Icon }) => (
-                    <button
-                        key={id}
-                        className={`sidebar__btn ${activeView === id ? 'sidebar__btn--active' : ''}`}
-                        onClick={() => onViewChange(id)}
+                {navItems.map(({ path, label, Icon }) => (
+                    <NavLink
+                        key={path}
+                        to={path}
+                        end={path === '/'}
+                        className={({ isActive }) =>
+                            `sidebar__btn ${isActive ? 'sidebar__btn--active' : ''}`
+                        }
                         title={label}
                     >
                         <Icon size={20} />
                         {expanded && <span className="sidebar__btn-label">{label}</span>}
-                        {activeView === id && <div className="sidebar__btn-indicator" />}
-                    </button>
+                    </NavLink>
                 ))}
             </nav>
 

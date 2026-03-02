@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { GlobalDataProvider } from './hooks/useGlobalData';
 import ErrorBoundary from './components/layout/ErrorBoundary';
 import Sidebar from './components/layout/Sidebar';
@@ -12,33 +12,33 @@ import RiskPanel from './components/risk/RiskPanel';
 import AboutPage from './components/about/AboutPage';
 import './App.css';
 
-const views = {
-  overview: Overview,
-  markets: MarketPanel,
-  news: NewsFeed,
-  map: ConflictMap,
-  risk: RiskPanel,
-  about: AboutPage,
-};
-
 export default function App() {
-  const [activeView, setActiveView] = useState('overview');
-
-  const ActiveComponent = views[activeView] || Overview;
-
   return (
-    <GlobalDataProvider>
-      <div className="app">
-        <Sidebar activeView={activeView} onViewChange={setActiveView} />
-        <Header />
-        <main className="main-content">
-          <ErrorBoundary key={activeView}>
-            <ActiveComponent />
-          </ErrorBoundary>
-          <Footer onNavigate={setActiveView} />
-        </main>
-      </div>
-    </GlobalDataProvider>
+    <BrowserRouter>
+      <GlobalDataProvider>
+        <div className="app">
+          <Sidebar />
+          <div className="app__main">
+            <Header />
+            <main className="main-content">
+              <div className="main-content__body">
+                <ErrorBoundary>
+                  <Routes>
+                    <Route path="/" element={<Overview />} />
+                    <Route path="/markets" element={<MarketPanel />} />
+                    <Route path="/news" element={<NewsFeed />} />
+                    <Route path="/map" element={<ConflictMap />} />
+                    <Route path="/risk" element={<RiskPanel />} />
+                    <Route path="/about" element={<AboutPage />} />
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                  </Routes>
+                </ErrorBoundary>
+              </div>
+              <Footer />
+            </main>
+          </div>
+        </div>
+      </GlobalDataProvider>
+    </BrowserRouter>
   );
 }
-

@@ -78,6 +78,7 @@
   white-space: nowrap;
   width: 100%;
   justify-content: center;
+  text-decoration: none;
 }
 
 .sidebar--expanded .sidebar__btn {
