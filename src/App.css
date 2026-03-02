@@ -8,8 +8,17 @@
   margin-left: var(--sidebar-width);
   margin-top: var(--header-height);
   padding: var(--space-lg);
+  padding-bottom: 0;
   width: calc(100% - var(--sidebar-width));
-  height: calc(100vh - var(--header-height));
+  min-height: calc(100vh - var(--header-height));
   overflow-y: auto;
   overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
 }
+
+.main-content > .error-boundary,
+.main-content > div:first-child {
+  flex: 1;
+}
+
