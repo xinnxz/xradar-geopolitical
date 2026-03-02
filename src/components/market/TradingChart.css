@@ -1,24 +1,21 @@
 /* ========================================
- * TradingChart — Professional Trading CSS
- * Binance/OKX dark theme styling
- * ======================================== */
+   TradingChart & MarketPanel — Binance/OKX Dark Theme
+   Professional Trading Terminal Styles
+   ======================================== */
 
+/* ---- TradingView Chart Component ---- */
 .tv-chart {
-  position: relative;
-  border-radius: 8px;
-  overflow: hidden;
-  background: var(--bg-card);
+  display: flex;
+  flex-direction: column;
+  width: 100%;
 }
 
-/* OHLC Header — like Binance top bar */
 .tv-chart__header {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 10px 14px;
-  border-bottom: 1px solid rgba(42, 46, 57, 0.5);
-  min-height: 42px;
-  flex-wrap: wrap;
+  padding: 8px 12px;
+  min-height: 36px;
 }
 
 .tv-chart__symbol {
@@ -29,19 +26,16 @@
 
 .tv-chart__symbol-name {
   font-family: var(--font-mono);
+  font-size: 0.9rem;
   font-weight: 700;
-  font-size: 0.95rem;
   color: var(--text-primary);
-  letter-spacing: 0.3px;
 }
 
 .tv-chart__symbol-title {
-  font-size: 0.7rem;
-  color: #848e9c;
-  font-weight: 400;
+  font-size: 0.65rem;
+  color: var(--text-muted);
 }
 
-/* OHLC values */
 .tv-chart__ohlc {
   display: flex;
   align-items: center;
@@ -53,119 +47,93 @@
   display: flex;
   align-items: center;
   gap: 3px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
 }
 
 .tv-chart__ohlc-label {
-  font-size: 0.65rem;
+  color: var(--text-muted);
+  font-size: 0.62rem;
   font-weight: 500;
-  color: #5e6571;
-  font-family: var(--font-mono);
-  text-transform: uppercase;
 }
 
 .tv-chart__ohlc-value {
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
   font-weight: 600;
-  transition: color 0.15s;
 }
 
 .tv-chart__ohlc-value.up { color: #0ecb81; }
 .tv-chart__ohlc-value.down { color: #f6465d; }
 
-/* Chart canvas — full bleed */
 .tv-chart__canvas {
   width: 100%;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  overflow: hidden;
 }
 
-/* ========================================
- * Chart Type & Interval Selector Tabs
- * Binance-style segmented controls
- * ======================================== */
+/* ---- Market Panel Layout ---- */
+.market-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
 
-.chart-controls {
+/* Status Bar */
+.market-panel__status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+}
+
+.market-panel__status-left {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.market-panel__refresh {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 14px;
-  border-bottom: 1px solid rgba(42, 46, 57, 0.4);
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.chart-controls::-webkit-scrollbar { display: none; }
-
-.chart-controls__group {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  padding: 2px;
-  background: rgba(42, 46, 57, 0.3);
-  border-radius: 6px;
-}
-
-.chart-controls__divider {
-  width: 1px;
-  height: 20px;
-  background: rgba(42, 46, 57, 0.6);
-  margin: 0 6px;
-}
-
-.chart-btn {
-  font-family: var(--font-mono);
-  font-size: 0.65rem;
-  font-weight: 500;
-  padding: 4px 10px;
-  border: none;
-  border-radius: 4px;
-  background: transparent;
-  color: #848e9c;
-  cursor: pointer;
-  transition: all 0.15s;
-  white-space: nowrap;
-  letter-spacing: 0.2px;
-}
-
-.chart-btn:hover {
-  color: #d1d4dc;
-  background: rgba(42, 46, 57, 0.5);
-}
-
-.chart-btn--active {
-  color: #f0b90b;
-  background: rgba(240, 185, 11, 0.1);
-}
-
-.chart-btn--type {
-  font-size: 0.7rem;
   padding: 4px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
 }
 
-/* ========================================
- * Market Ticker Bar — Binance-style
- * ======================================== */
+.market-panel__refresh:hover {
+  border-color: var(--accent-blue);
+  color: var(--text-primary);
+}
 
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.spinning { animation: spin 1s linear infinite; }
+
+/* ---- Ticker Cards (Binance style) ---- */
 .market-ticker {
-  display: flex;
-  gap: 2px;
-  padding: 0;
-  margin-bottom: 12px;
-  overflow-x: auto;
-  scrollbar-width: none;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
 }
-
-.market-ticker::-webkit-scrollbar { display: none; }
 
 .ticker-card {
-  flex: 1;
-  min-width: 200px;
-  padding: 14px 16px;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
   cursor: pointer;
-  transition: all 0.2s;
-  text-decoration: none;
+  transition: all var(--transition-fast);
   position: relative;
   overflow: hidden;
 }
@@ -177,34 +145,31 @@
   left: 0;
   right: 0;
   height: 2px;
-  background: var(--ticker-accent);
+  background: var(--ticker-accent, var(--accent-blue));
   opacity: 0;
-  transition: opacity 0.2s;
+  transition: opacity var(--transition-fast);
 }
 
-.ticker-card:hover {
-  border-color: var(--ticker-accent);
-  background: rgba(42, 46, 57, 0.15);
+.ticker-card:hover,
+.ticker-card--active {
+  border-color: var(--ticker-accent, var(--accent-blue));
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.3);
 }
 
-.ticker-card:hover::before {
+.ticker-card:hover::before,
+.ticker-card--active::before {
   opacity: 1;
 }
 
 .ticker-card--active {
-  border-color: var(--ticker-accent);
-  background: rgba(42, 46, 57, 0.2);
-}
-
-.ticker-card--active::before {
-  opacity: 1;
+  background: var(--bg-card-hover);
 }
 
 .ticker-card__top {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .ticker-card__symbol {
@@ -216,68 +181,131 @@
 .ticker-card__icon {
   width: 28px;
   height: 28px;
-  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.7rem;
+  border-radius: var(--radius-sm);
 }
 
 .ticker-card__name {
   font-family: var(--font-mono);
-  font-weight: 700;
   font-size: 0.8rem;
+  font-weight: 700;
   color: var(--text-primary);
 }
 
 .ticker-card__label {
   font-size: 0.6rem;
-  color: #848e9c;
+  color: var(--text-muted);
 }
 
 .ticker-card__badge {
-  font-size: 0.55rem;
-  padding: 2px 6px;
-  border-radius: 3px;
-  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
   font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
 }
 
 .ticker-card__badge--up {
-  background: rgba(14, 203, 129, 0.12);
+  background: rgba(14, 203, 129, 0.1);
   color: #0ecb81;
 }
 
 .ticker-card__badge--down {
-  background: rgba(246, 70, 93, 0.12);
+  background: rgba(246, 70, 93, 0.1);
   color: #f6465d;
 }
 
 .ticker-card__price {
   font-family: var(--font-mono);
+  font-size: 1.3rem;
   font-weight: 700;
-  font-size: 1.15rem;
   color: var(--text-primary);
   margin-bottom: 2px;
 }
 
 .ticker-card__change {
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  font-weight: 500;
   display: flex;
   align-items: center;
   gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 600;
 }
 
-/* ========================================
- * Forex Table — OKX style
- * ======================================== */
+/* ---- Chart Area ---- */
+.market-panel__chart-wrapper {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
 
+.chart-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.chart-controls__group {
+  display: flex;
+  gap: 2px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+}
+
+.chart-controls__divider {
+  width: 1px;
+  height: 20px;
+  background: var(--border-color);
+  margin: 0 4px;
+}
+
+.chart-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.chart-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.chart-btn--active {
+  color: var(--text-primary) !important;
+  background: var(--bg-card) !important;
+}
+
+.chart-btn--type {
+  padding: 5px 8px;
+}
+
+/* ---- Forex Table (OKX style) ---- */
 .forex-pro {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
 }
 
@@ -287,97 +315,82 @@
   justify-content: space-between;
   padding: 12px 16px;
   border-bottom: 1px solid var(--border-color);
-  flex-wrap: wrap;
-  gap: 8px;
 }
 
 .forex-pro__title {
-  font-weight: 700;
-  font-size: 0.85rem;
-  color: var(--text-primary);
   display: flex;
   align-items: center;
   gap: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-primary);
 }
 
 .forex-pro__search {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 10px;
-  background: rgba(42, 46, 57, 0.3);
+  padding: 5px 12px;
+  background: var(--bg-elevated);
   border: 1px solid var(--border-color);
-  border-radius: 6px;
-  color: #848e9c;
-  transition: border-color 0.2s;
-}
-
-.forex-pro__search:focus-within {
-  border-color: #f0b90b;
+  border-radius: var(--radius-full);
+  color: var(--text-muted);
+  min-width: 160px;
 }
 
 .forex-pro__search input {
-  background: none;
+  flex: 1;
+  background: transparent;
   border: none;
   outline: none;
   color: var(--text-primary);
+  font-family: var(--font-body);
   font-size: 0.75rem;
-  font-family: var(--font-mono);
-  width: 140px;
 }
 
 .forex-pro__search input::placeholder {
-  color: #5e6571;
+  color: var(--text-muted);
 }
 
 .forex-pro__filters {
   display: flex;
-  gap: 2px;
+  gap: 4px;
   padding: 8px 16px;
-  border-bottom: 1px solid rgba(42, 46, 57, 0.3);
-  overflow-x: auto;
-  scrollbar-width: none;
+  border-bottom: 1px solid var(--border-color);
+  flex-wrap: wrap;
 }
-
-.forex-pro__filters::-webkit-scrollbar { display: none; }
 
 .forex-pro__col-header {
   display: grid;
-  grid-template-columns: 1.5fr 1fr 1fr;
-  gap: 8px;
+  grid-template-columns: 1fr 1fr 1fr;
   padding: 8px 16px;
   font-size: 0.65rem;
-  color: #5e6571;
-  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  border-bottom: 1px solid rgba(42, 46, 57, 0.3);
-}
-
-.forex-pro__col-header span:not(:first-child) {
-  text-align: right;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .forex-pro__body {
-  max-height: 400px;
+  max-height: 500px;
   overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(42, 46, 57, 0.6) transparent;
 }
 
 .forex-pro__row {
   display: grid;
-  grid-template-columns: 1.5fr 1fr 1fr;
-  gap: 8px;
+  grid-template-columns: 1fr 1fr 1fr;
+  align-items: center;
   padding: 8px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  transition: background var(--transition-fast);
   text-decoration: none;
-  transition: background 0.12s;
-  border-bottom: 1px solid rgba(42, 46, 57, 0.15);
+  color: inherit;
   cursor: pointer;
 }
 
 .forex-pro__row:hover {
-  background: rgba(42, 46, 57, 0.2);
+  background: var(--bg-elevated);
 }
 
 .forex-pro__row:last-child {
@@ -391,8 +404,7 @@
 }
 
 .forex-pro__flag {
-  font-size: 1rem;
-  line-height: 1;
+  font-size: 1.15rem;
 }
 
 .forex-pro__pair-info {
@@ -401,97 +413,46 @@
 }
 
 .forex-pro__pair-name {
-  font-family: var(--font-mono);
   font-weight: 600;
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   color: var(--text-primary);
 }
 
 .forex-pro__pair-region {
-  font-size: 0.6rem;
-  color: #5e6571;
+  font-size: 0.55rem;
+  color: var(--text-muted);
 }
 
 .forex-pro__rate {
   font-family: var(--font-mono);
-  font-size: 0.78rem;
-  font-weight: 500;
+  font-weight: 600;
+  font-size: 0.8rem;
   color: var(--text-primary);
-  text-align: right;
-  align-self: center;
 }
 
 .forex-pro__pct {
-  font-family: var(--font-mono);
-  font-size: 0.73rem;
-  font-weight: 600;
-  text-align: right;
-  align-self: center;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 4px;
-  padding: 3px 8px;
-  border-radius: 4px;
+  gap: 3px;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
 }
 
-.forex-pro__pct--up {
-  color: #0ecb81;
-  background: rgba(14, 203, 129, 0.08);
-}
-
-.forex-pro__pct--down {
-  color: #f6465d;
-  background: rgba(246, 70, 93, 0.08);
-}
-
-.forex-pro__pct--flat {
-  color: #848e9c;
-}
+.forex-pro__pct--up { color: #0ecb81; }
+.forex-pro__pct--down { color: #f6465d; }
+.forex-pro__pct--flat { color: var(--text-muted); }
 
 .forex-pro__empty {
-  text-align: center;
   padding: 32px;
-  color: #5e6571;
+  text-align: center;
+  color: var(--text-muted);
   font-size: 0.8rem;
 }
 
-/* ========================================
- * Market Panel Layout — Trading Terminal
- * ======================================== */
-
-.market-panel {
-  padding: 0;
-  gap: 12px;
-  display: flex;
-  flex-direction: column;
-}
-
-.market-panel__status {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 16px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-}
-
-.market-panel__charts-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-
-@media (max-width: 1200px) {
-  .market-panel__charts-grid {
+/* ---- Responsive ---- */
+@media (max-width: 1024px) {
+  .market-ticker {
     grid-template-columns: 1fr;
   }
-}
-
-.market-panel__chart-wrapper {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  overflow: hidden;
 }
