@@ -44,8 +44,8 @@ function getAllApiKeys() {
   if (process.env.GNEWS_KEY) keys.push(process.env.GNEWS_KEY);
   else if (process.env.VITE_GNEWS_KEY) keys.push(process.env.VITE_GNEWS_KEY);
 
-  // Additional keys: GNEWS_KEY_2, GNEWS_KEY_3, ..., GNEWS_KEY_10
-  for (let i = 2; i <= 10; i++) {
+  // Additional keys: GNEWS_KEY_2, GNEWS_KEY_3, ..., GNEWS_KEY_30
+  for (let i = 2; i <= 30; i++) {
     const key = process.env[`GNEWS_KEY_${i}`];
     if (key) keys.push(key);
   }
