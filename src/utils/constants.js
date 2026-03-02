@@ -113,6 +113,7 @@ export const NAV_ITEMS = [
   { id: 'news', label: 'News Feed', icon: 'Newspaper' },
   { id: 'map', label: 'Conflict Map', icon: 'Map' },
   { id: 'risk', label: 'Risk Index', icon: 'ShieldAlert' },
+  { id: 'about', label: 'About', icon: 'Info' },
 ];
 
 // ========================================

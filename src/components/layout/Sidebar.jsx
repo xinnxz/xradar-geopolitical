@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
     LayoutDashboard, TrendingUp, Newspaper, Map, ShieldAlert,
-    ChevronLeft, ChevronRight, Radio
+    ChevronLeft, ChevronRight, Radio, Info
 } from 'lucide-react';
 import './Sidebar.css';
 
@@ -11,6 +11,7 @@ const navItems = [
     { id: 'news', label: 'News Feed', Icon: Newspaper },
     { id: 'map', label: 'Conflict Map', Icon: Map },
     { id: 'risk', label: 'Risk Index', Icon: ShieldAlert },
+    { id: 'about', label: 'About', Icon: Info },
 ];
 
 export default function Sidebar({ activeView, onViewChange }) {

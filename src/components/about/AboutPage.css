@@ -1,0 +1,133 @@
+/* About Page Styles */
+
+.about-page {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 800px;
+}
+
+.about-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.about-header h2 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* Tabs */
+.about-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  flex-wrap: wrap;
+}
+
+.about-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.about-tab:hover {
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+}
+
+.about-tab--active {
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  border-color: var(--accent-blue);
+}
+
+/* Content */
+.about-content {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 24px;
+}
+
+.about-section h3 {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 20px 0 8px 0;
+}
+
+.about-section h3:first-child {
+  margin-top: 0;
+}
+
+.about-section h4 {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 16px 0 6px 0;
+}
+
+.about-section p {
+  font-size: 0.74rem;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  margin: 0 0 8px 0;
+}
+
+.about-section a {
+  color: var(--accent-blue);
+  text-decoration: none;
+}
+
+.about-section a:hover {
+  text-decoration: underline;
+}
+
+/* Features grid */
+.about-features {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.about-feature {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+}
+
+.about-feature__icon {
+  font-size: 1.2rem;
+}
+
+.about-feature strong {
+  font-size: 0.74rem;
+  color: var(--text-primary);
+  display: block;
+}
+
+.about-feature span {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}

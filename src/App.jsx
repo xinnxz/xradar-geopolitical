@@ -8,6 +8,7 @@ import MarketPanel from './components/market/MarketPanel';
 import NewsFeed from './components/news/NewsFeed';
 import ConflictMap from './components/map/ConflictMap';
 import RiskPanel from './components/risk/RiskPanel';
+import AboutPage from './components/about/AboutPage';
 import './App.css';
 
 const views = {
@@ -16,6 +17,7 @@ const views = {
   news: NewsFeed,
   map: ConflictMap,
   risk: RiskPanel,
+  about: AboutPage,
 };
 
 export default function App() {
