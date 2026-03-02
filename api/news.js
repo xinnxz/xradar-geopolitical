@@ -53,9 +53,9 @@ function detectSentiment(text) {
   return 'neutral';
 }
 
-async function fetchGNewsArticles(query, apiKey, max = 10) {
+async function fetchGNewsArticles(query, apiKey, max = 10, page = 1) {
   const q = encodeURIComponent(query);
-  const url = `https://gnews.io/api/v4/search?q=${q}&lang=en&max=${max}&sortby=publishedAt&apikey=${apiKey}`;
+  const url = `https://gnews.io/api/v4/search?q=${q}&lang=en&max=${max}&page=${page}&sortby=publishedAt&apikey=${apiKey}`;
   
   const res = await fetch(url);
   
@@ -117,8 +117,9 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { category = 'all' } = req.query;
-    const cacheKey = `news_${category}_v2`; // v2 to bust old empty cache
+    const { category = 'all', page = '1' } = req.query;
+    const pageNum = parseInt(page) || 1;
+    const cacheKey = `news_${category}_p${pageNum}_v2`;
 
     // Check cache first (only if non-empty data was cached)
     const cached = getCached(cacheKey);
@@ -126,6 +127,7 @@ export default async function handler(req, res) {
       return res.status(200).json({
         articles: cached,
         total: cached.length,
+        page: pageNum,
         cached: true,
         source: 'gnews',
       });
@@ -141,8 +143,8 @@ export default async function handler(req, res) {
       for (let i = 0; i < categories.length; i++) {
         const cat = categories[i];
         try {
-          const raw = await fetchGNewsArticles(CATEGORY_QUERIES[cat], apiKey, 10);
-          const transformed = raw.map((a, idx) => transformArticle(a, cat, idx));
+          const raw = await fetchGNewsArticles(CATEGORY_QUERIES[cat], apiKey, 10, pageNum);
+          const transformed = raw.map((a, idx) => transformArticle(a, cat, idx + (pageNum - 1) * 10));
           articles.push(...transformed);
           console.log(`✓ ${cat}: ${raw.length} articles`);
         } catch (e) {
@@ -159,8 +161,8 @@ export default async function handler(req, res) {
       articles.sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
     } else {
       const query = CATEGORY_QUERIES[category] || CATEGORY_QUERIES.all;
-      const raw = await fetchGNewsArticles(query, apiKey, 10);
-      articles = raw.map((a, i) => transformArticle(a, category, i));
+      const raw = await fetchGNewsArticles(query, apiKey, 10, pageNum);
+      articles = raw.map((a, i) => transformArticle(a, category, i + (pageNum - 1) * 10));
     }
 
     // ONLY cache if we got actual results — never cache empty
@@ -171,9 +173,10 @@ export default async function handler(req, res) {
     return res.status(200).json({
       articles,
       total: articles.length,
+      page: pageNum,
+      hasMore: articles.length > 0,
       cached: false,
       source: 'gnews',
-      keyUsed: apiKey ? 'yes' : 'no',
     });
   } catch (error) {
     console.error('News proxy error:', error);

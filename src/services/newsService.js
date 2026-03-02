@@ -42,6 +42,31 @@ export async function fetchNews(category = 'all') {
 }
 
 /**
+ * Fetch a specific page of news from the proxy
+ * Used for infinite scroll — each page fetches NEW articles from GNews
+ */
+export async function fetchNewsPage(category = 'all', page = 1) {
+  // Only on Vercel
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return { articles: [], hasMore: false };
+  }
+
+  try {
+    const res = await fetch(`/api/news?category=${category}&page=${page}`);
+    if (!res.ok) return { articles: [], hasMore: false };
+    const data = await res.json();
+    if (data.error || data.mock) return { articles: [], hasMore: false };
+    return {
+      articles: data.articles || [],
+      hasMore: data.hasMore || false,
+    };
+  } catch (e) {
+    console.info('News page fetch failed');
+    return { articles: [], hasMore: false };
+  }
+}
+
+/**
  * Fetch from Vercel serverless proxy (/api/news)
  * Returns up to 50 articles when category='all'
  */
@@ -52,7 +77,7 @@ async function fetchFromProxy(category) {
   }
 
   try {
-    const res = await fetch(`/api/news?category=${category}`);
+    const res = await fetch(`/api/news?category=${category}&page=1`);
     if (!res.ok) return null;
     const data = await res.json();
     if (data.error || data.mock) return null;
@@ -62,6 +87,7 @@ async function fetchFromProxy(category) {
     return null;
   }
 }
+
 
 /**
  * Fetch directly from GNews API (client-side, max 10 per request)

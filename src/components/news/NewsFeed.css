@@ -598,6 +598,30 @@
   border-top: 1px solid var(--border-color);
 }
 
+/* Infinite scroll sentinel */
+.nf-scroll-sentinel {
+  min-height: 1px;
+  margin-top: 8px;
+}
+
+.nf-loading-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+/* Section article count */
+.nf-section__count {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  font-weight: 400;
+  margin-left: auto;
+}
+
 /* ---- Responsive ---- */
 @media (max-width: 1200px) {
   .nf-grid {
