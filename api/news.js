@@ -1,8 +1,8 @@
 // ========================================
 // Vercel Serverless Function: News Proxy
 // Route: /api/news
-// Fetches news from GNews API server-side (protects API key)
-// Fetches ALL categories in parallel for rich content
+// Fetches news from GNews API server-side
+// Sequential calls with delays to avoid rate limit
 // ========================================
 
 // Server-side cache
@@ -19,6 +19,8 @@ function setMemoCache(key, data) {
   cache[key] = { data, time: Date.now() };
 }
 
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 // Category search queries
 const CATEGORY_QUERIES = {
   all: 'geopolitical OR conflict OR sanctions OR war OR military',
@@ -29,9 +31,8 @@ const CATEGORY_QUERIES = {
   diplomacy: 'diplomacy OR peace talks OR negotiations OR summit OR treaty',
 };
 
-// Detect category from title
 function detectCategory(title) {
-  const lower = title.toLowerCase();
+  const lower = (title || '').toLowerCase();
   if (/war|military|attack|troops|missile|bomb|battle|strike|killed|casualties/.test(lower)) return 'war';
   if (/sanction|embargo|ban|restrict/.test(lower)) return 'sanctions';
   if (/oil|gas|energy|opec|fuel|pipeline|crude|lng/.test(lower)) return 'energy';
@@ -40,9 +41,8 @@ function detectCategory(title) {
   return 'war';
 }
 
-// Detect sentiment from text
 function detectSentiment(text) {
-  const lower = text.toLowerCase();
+  const lower = (text || '').toLowerCase();
   const neg = ['attack', 'war', 'killed', 'dead', 'bomb', 'crisis', 'threat',
     'collapse', 'sanctions', 'destroyed', 'casualties', 'escalat', 'tension',
     'missile', 'invasion', 'flee', 'displaced', 'suffer', 'struck'].filter(w => lower.includes(w)).length;
@@ -53,32 +53,35 @@ function detectSentiment(text) {
   return 'neutral';
 }
 
-/**
- * Fetch articles from GNews for a specific query
- */
 async function fetchGNewsArticles(query, apiKey, max = 10) {
   const q = encodeURIComponent(query);
   const url = `https://gnews.io/api/v4/search?q=${q}&lang=en&max=${max}&sortby=publishedAt&apikey=${apiKey}`;
   
   const res = await fetch(url);
+  
   if (!res.ok) {
-    throw new Error(`GNews API error: ${res.status}`);
+    const text = await res.text().catch(() => '');
+    console.error(`GNews error ${res.status}: ${text.substring(0, 200)}`);
+    throw new Error(`GNews API ${res.status}`);
   }
   
   const data = await res.json();
+  
+  if (data.errors) {
+    console.error('GNews errors:', JSON.stringify(data.errors));
+    throw new Error(JSON.stringify(data.errors));
+  }
+  
   return data.articles || [];
 }
 
-/**
- * Transform raw GNews article to our format
- */
 function transformArticle(article, category, index) {
   return {
     id: `gnews-${category}-${index}-${Date.now()}`,
     title: article.title || '',
     description: article.description || article.content?.substring(0, 300) || '',
     source: article.source?.name || 'Unknown',
-    category: category === 'all' ? detectCategory(article.title || '') : category,
+    category: category === 'all' ? detectCategory(article.title) : category,
     sentiment: detectSentiment((article.title || '') + ' ' + (article.description || '')),
     publishedAt: article.publishedAt || new Date().toISOString(),
     imageUrl: article.image || null,
@@ -86,14 +89,10 @@ function transformArticle(article, category, index) {
   };
 }
 
-/**
- * Deduplicate articles by title similarity
- */
 function deduplicateArticles(articles) {
   const seen = new Set();
   return articles.filter(article => {
-    // Use first 50 chars of title as key to catch near-duplicates
-    const key = article.title.substring(0, 50).toLowerCase();
+    const key = (article.title || '').substring(0, 50).toLowerCase();
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -107,18 +106,23 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const apiKey = process.env.VITE_GNEWS_KEY;
+  // Check BOTH possible env var names
+  const apiKey = process.env.GNEWS_KEY || process.env.VITE_GNEWS_KEY;
   if (!apiKey) {
-    return res.status(500).json({ error: 'GNEWS_KEY not configured', mock: true });
+    return res.status(500).json({ 
+      error: 'GNEWS_KEY not configured',
+      hint: 'Add GNEWS_KEY (or VITE_GNEWS_KEY) to Vercel Environment Variables',
+      mock: true,
+    });
   }
 
   try {
     const { category = 'all' } = req.query;
-    const cacheKey = `news_${category}`;
+    const cacheKey = `news_${category}_v2`; // v2 to bust old empty cache
 
-    // Check cache first
+    // Check cache first (only if non-empty data was cached)
     const cached = getCached(cacheKey);
-    if (cached) {
+    if (cached && cached.length > 0) {
       return res.status(200).json({
         articles: cached,
         total: cached.length,
@@ -130,47 +134,46 @@ export default async function handler(req, res) {
     let articles = [];
 
     if (category === 'all') {
-      // Fetch ALL categories in parallel for maximum content!
-      // 5 queries × 10 articles = up to 50 articles
-      const categories = ['war', 'economy', 'sanctions', 'energy', 'diplomacy'];
+      // Fetch categories SEQUENTIALLY with delays to avoid rate limit
+      // GNews free tier: max 1 req/sec, 100 req/day
+      const categories = ['war', 'economy', 'energy', 'sanctions', 'diplomacy'];
       
-      const results = await Promise.allSettled(
-        categories.map(async (cat) => {
-          try {
-            const raw = await fetchGNewsArticles(CATEGORY_QUERIES[cat], apiKey, 10);
-            return raw.map((a, i) => transformArticle(a, cat, i));
-          } catch (e) {
-            console.error(`Failed to fetch ${cat}:`, e.message);
-            return [];
-          }
-        })
-      );
-
-      // Merge all results
-      for (const result of results) {
-        if (result.status === 'fulfilled') {
-          articles.push(...result.value);
+      for (let i = 0; i < categories.length; i++) {
+        const cat = categories[i];
+        try {
+          const raw = await fetchGNewsArticles(CATEGORY_QUERIES[cat], apiKey, 10);
+          const transformed = raw.map((a, idx) => transformArticle(a, cat, idx));
+          articles.push(...transformed);
+          console.log(`✓ ${cat}: ${raw.length} articles`);
+        } catch (e) {
+          console.error(`✗ ${cat}: ${e.message}`);
+        }
+        
+        // Wait 1.2s between each call to avoid rate limit
+        if (i < categories.length - 1) {
+          await delay(1200);
         }
       }
 
-      // Deduplicate and sort by date (newest first)
       articles = deduplicateArticles(articles);
       articles.sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
     } else {
-      // Single category
       const query = CATEGORY_QUERIES[category] || CATEGORY_QUERIES.all;
       const raw = await fetchGNewsArticles(query, apiKey, 10);
       articles = raw.map((a, i) => transformArticle(a, category, i));
     }
 
-    // Cache results
-    setMemoCache(cacheKey, articles);
+    // ONLY cache if we got actual results — never cache empty
+    if (articles.length > 0) {
+      setMemoCache(cacheKey, articles);
+    }
 
     return res.status(200).json({
       articles,
       total: articles.length,
       cached: false,
       source: 'gnews',
+      keyUsed: apiKey ? 'yes' : 'no',
     });
   } catch (error) {
     console.error('News proxy error:', error);
