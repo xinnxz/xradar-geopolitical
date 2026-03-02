@@ -139,9 +139,13 @@ const EXHAUSTED_TTL = 60 * 60 * 1000; // 1 hour
 function getAllAlphaKeys() {
   const keys = [];
   if (process.env.ALPHA_VANTAGE_KEY) keys.push(process.env.ALPHA_VANTAGE_KEY);
-  for (let i = 2; i <= 10; i++) {
+  // Scan dynamically: ALPHA_VANTAGE_KEY_2, _3, ... (no limit)
+  let i = 2;
+  while (true) {
     const key = process.env[`ALPHA_VANTAGE_KEY_${i}`];
-    if (key) keys.push(key);
+    if (!key) break;
+    keys.push(key);
+    i++;
   }
   return keys;
 }

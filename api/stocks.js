@@ -44,9 +44,13 @@ const EXHAUSTED_TTL = 60 * 60 * 1000;
 function getAllFinnhubKeys() {
   const keys = [];
   if (process.env.FINNHUB_KEY) keys.push(process.env.FINNHUB_KEY);
-  for (let i = 2; i <= 10; i++) {
+  // Scan dynamically: FINNHUB_KEY_2, FINNHUB_KEY_3, ... (no limit)
+  let i = 2;
+  while (true) {
     const key = process.env[`FINNHUB_KEY_${i}`];
-    if (key) keys.push(key);
+    if (!key) break;
+    keys.push(key);
+    i++;
   }
   return keys;
 }
