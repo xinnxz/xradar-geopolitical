@@ -219,20 +219,12 @@ function ForexTab({ searchQuery }) {
     const { snapshot, loading, lastUpdated, refresh } = useGlobalData();
     const [activeRegion, setActiveRegion] = useState('All');
 
-    const forexRates = snapshot?.forex?.rates || {};
-    const forexPrev = snapshot?.forex?.previous || {};
-
-    const pairs = FOREX_PAIRS.map(p => {
-        const rate = forexRates[p.to];
-        const prev = forexPrev[p.to];
-        const change = rate && prev ? +((rate - prev) / prev * 100).toFixed(4) : 0;
-        return { ...p, rate, change };
-    }).filter(p => p.rate);
+    // snapshot.forex is already a flat array: [{pair, value, change, changePercent, flag, region}, ...]
+    const pairs = snapshot?.forex || [];
 
     const filtered = pairs.filter(p => {
         const matchRegion = activeRegion === 'All' || p.region === activeRegion;
-        const matchSearch = !searchQuery || p.pair.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            p.to.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchSearch = !searchQuery || p.pair.toLowerCase().includes(searchQuery.toLowerCase());
         return matchRegion && matchSearch;
     });
 
@@ -263,9 +255,9 @@ function ForexTab({ searchQuery }) {
                             <span className="mp-forex-flag">{p.flag}</span>
                             <span className="mp-coin-name">{p.pair}</span>
                         </span>
-                        <span className="mp-td mp-td--price">{p.rate?.toFixed(4)}</span>
-                        <span className={`mp-td mp-td--change ${p.change >= 0 ? 'mp-green' : 'mp-red'}`}>
-                            <ChangeIcon value={p.change} /> {Math.abs(p.change).toFixed(4)}%
+                        <span className="mp-td mp-td--price">{p.value?.toFixed(4)}</span>
+                        <span className={`mp-td mp-td--change ${p.changePercent >= 0 ? 'mp-green' : 'mp-red'}`}>
+                            <ChangeIcon value={p.changePercent} /> {Math.abs(p.changePercent || 0).toFixed(2)}%
                         </span>
                         <span className="mp-td mp-td--region">{p.region}</span>
                     </div>
