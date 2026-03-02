@@ -29,7 +29,7 @@ export default function Header() {
         <header className="header">
             <div className="header__left">
                 <h1 className="header__title">
-                    <span className="header__title-x">X</span>Radar
+                    <span className="header__title-x">Global</span>War
                     <span className="header__subtitle">Geopolitical Intelligence</span>
                 </h1>
             </div>

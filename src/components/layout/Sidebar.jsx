@@ -23,7 +23,7 @@ export default function Sidebar({ activeView, onViewChange }) {
                 <div className="sidebar__logo-icon">
                     <Radio size={22} />
                 </div>
-                {expanded && <span className="sidebar__logo-text">XRadar</span>}
+                {expanded && <span className="sidebar__logo-text">GlobalWar</span>}
             </div>
 
             {/* Navigation */}
