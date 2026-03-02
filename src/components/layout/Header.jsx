@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Clock, Wifi, WifiOff, AlertTriangle } from 'lucide-react';
+import { Clock, Wifi, WifiOff, AlertTriangle, Sun, Moon } from 'lucide-react';
 import { useGlobalData } from '../../hooks/useGlobalData';
+import { useTheme } from '../../hooks/useTheme';
 import ShareBar from './ShareBar';
 import './Header.css';
 
 export default function Header() {
     const { risk, loading } = useGlobalData();
+    const { theme, toggle } = useTheme();
     const [time, setTime] = useState(new Date());
     const [isOnline, setIsOnline] = useState(navigator.onLine);
 
@@ -56,6 +58,9 @@ export default function Header() {
 
             <div className="header__right">
                 <ShareBar />
+                <button className="header__theme-toggle" onClick={toggle} title={theme === 'dark' ? 'Light mode' : 'Dark mode'}>
+                    {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+                </button>
                 <div className="header__status">
                     {isOnline ? (
                         <span className="header__online"><Wifi size={14} /> Live</span>
