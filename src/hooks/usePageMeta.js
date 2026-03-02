@@ -13,38 +13,39 @@ const OG_IMAGE = `${BASE_URL}/og-image.png`;
 
 /**
  * SEO metadata per route
- * Google shows ~60 chars for title and ~155 chars for description
+ * "Global War" keyword FIRST in title and description
+ * Google weighs the beginning of title/description most heavily
  */
 const PAGE_META = {
   '/': {
-    title: `${SITE} — Real-time Geopolitical & Market Intelligence`,
-    description: 'Live dashboard tracking global conflicts, crypto, stocks, forex, commodities, and geopolitical risk assessment in real-time.',
-    keywords: 'geopolitical risk, live dashboard, market intelligence, war tracker',
+    title: `Global War Live — Real-time Geopolitical Risk & Market Dashboard`,
+    description: 'Global War monitoring dashboard. Track armed conflicts, geopolitical risk, crypto, stocks, forex, commodities in real-time. Free live intelligence platform.',
+    keywords: 'global war, global war live, war tracker, geopolitical risk, live dashboard, conflict map, market intelligence, global conflicts, war monitoring',
   },
   '/markets': {
-    title: `Markets — Crypto, Stocks, Forex, Commodities | ${SITE}`,
-    description: 'Track 50+ instruments: Bitcoin, Ethereum, S&P 500, gold, oil, 29 forex pairs — all in one TradingView-style dashboard.',
-    keywords: 'crypto prices, stock market, forex rates, gold price, oil price, trading dashboard',
+    title: `Global War Markets — Live Crypto, Stocks, Forex & Commodities`,
+    description: 'Global War impact on markets. Track 50+ instruments: Bitcoin, S&P 500, gold, oil, 29 forex pairs — all affected by global conflicts and geopolitical events.',
+    keywords: 'global war markets, war impact stocks, conflict commodities, crypto war, forex geopolitics, gold price war',
   },
   '/news': {
-    title: `Geopolitical News — Live Feed | ${SITE}`,
-    description: 'Breaking geopolitical news affecting global markets. War, sanctions, diplomacy — updated in real-time with infinite scroll.',
-    keywords: 'geopolitical news, war news, global conflict news, market news',
+    title: `Global War News — Live Geopolitical Conflict Updates`,
+    description: 'Global War news feed. Breaking coverage of armed conflicts, sanctions, military operations, and their impact on global markets. Updated in real-time.',
+    keywords: 'global war news, war updates, conflict news, geopolitical news, military news, war breaking news',
   },
   '/map': {
-    title: `Conflict Map — Live Armed Conflicts | ${SITE}`,
-    description: 'Interactive map of active armed conflicts worldwide. Data from ACLED covering battles, riots, protests, and violence.',
-    keywords: 'conflict map, war map, armed conflicts, ACLED data, violence tracker',
+    title: `Global War Map — Live Armed Conflicts Worldwide`,
+    description: 'Global War interactive conflict map. Visualize active armed conflicts, battles, riots, and violence events worldwide with ACLED data.',
+    keywords: 'global war map, conflict map, war map, armed conflicts map, battle map, violence tracker, ACLED',
   },
   '/risk': {
-    title: `Risk Index — Geopolitical Risk Score | ${SITE}`,
-    description: 'Live geopolitical risk score calculated from conflict events, commodity prices, and news sentiment analysis.',
-    keywords: 'geopolitical risk index, risk score, market risk, conflict risk assessment',
+    title: `Global War Risk Index — Live Geopolitical Risk Score`,
+    description: 'Global War risk assessment. Live geopolitical risk score calculated from conflict events, commodity prices, and news sentiment analysis.',
+    keywords: 'global war risk, geopolitical risk index, war risk score, conflict risk, global risk assessment',
   },
   '/about': {
-    title: `About — Where the World Watches Risk | ${SITE}`,
-    description: 'GlobalWar.live provides free, real-time geopolitical intelligence and market monitoring. No account needed, no paywall.',
-    keywords: 'about globalwar, geopolitical intelligence platform, free trading dashboard',
+    title: `About Global War Live — Free Geopolitical Intelligence Platform`,
+    description: 'Global War Live: free real-time geopolitical intelligence and market monitoring. Track conflicts, their economic impact, and financial markets.',
+    keywords: 'about global war, globalwar live, geopolitical intelligence, free war dashboard, conflict tracker',
   },
 };
 
