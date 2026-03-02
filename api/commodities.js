@@ -132,6 +132,31 @@ async function fetchOilData(type, apiKey) {
   return result;
 }
 
+// Key rotation for Alpha Vantage
+const exhaustedKeys = new Map();
+const EXHAUSTED_TTL = 60 * 60 * 1000; // 1 hour
+
+function getAllAlphaKeys() {
+  const keys = [];
+  if (process.env.ALPHA_VANTAGE_KEY) keys.push(process.env.ALPHA_VANTAGE_KEY);
+  for (let i = 2; i <= 10; i++) {
+    const key = process.env[`ALPHA_VANTAGE_KEY_${i}`];
+    if (key) keys.push(key);
+  }
+  return keys;
+}
+
+function getAvailableKey() {
+  const allKeys = getAllAlphaKeys();
+  const now = Date.now();
+  for (const key of allKeys) {
+    const exhaustedAt = exhaustedKeys.get(key);
+    if (exhaustedAt && now - exhaustedAt > EXHAUSTED_TTL) exhaustedKeys.delete(key);
+    if (!exhaustedKeys.has(key)) return key;
+  }
+  return null;
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -139,9 +164,12 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const apiKey = process.env.ALPHA_VANTAGE_KEY;
+  const apiKey = getAvailableKey();
   if (!apiKey) {
-    return res.status(500).json({ error: 'ALPHA_VANTAGE_KEY not configured' });
+    return res.status(500).json({ 
+      error: 'All ALPHA_VANTAGE keys exhausted or not configured',
+      hint: 'Add ALPHA_VANTAGE_KEY (and _2, _3...) to Vercel env vars',
+    });
   }
 
   try {

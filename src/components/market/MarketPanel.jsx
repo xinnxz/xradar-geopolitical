@@ -1,24 +1,39 @@
 // ========================================
-// MarketPanel — Professional Trading Terminal
-// Binance/OKX-style layout with TradingView charts
-// Uses REAL data from Alpha Vantage API
+// MarketPanel — Full Trading Terminal
+// TradingView-style with 4 tabs:
+// Crypto | Stocks | Forex | Commodities
 // ========================================
 
-import { useState, useMemo } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
     TrendingUp, TrendingDown, Minus, Droplets, Gem,
-    RefreshCw, Wifi, Search, ExternalLink, BarChart3, LineChart, CandlestickChart
+    RefreshCw, Wifi, Search, BarChart3, LineChart,
+    CandlestickChart, Bitcoin, DollarSign, Building2, Fuel,
+    WifiOff
 } from 'lucide-react';
 import TradingChart from './TradingChart';
 import { useGlobalData } from '../../hooks/useGlobalData';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
+import {
+    fetchCryptoPrices, fetchStockIndices,
+    fetchForexRates, fetchForexHistory
+} from '../../services/marketService';
 import { formatCurrency, formatPercent, getChangeColor } from '../../utils/formatters';
-import { CHART_COLORS, FOREX_REGIONS, EXTERNAL_LINKS } from '../../utils/constants';
+import { CHART_COLORS, FOREX_PAIRS, FOREX_REGIONS } from '../../utils/constants';
 import './TradingChart.css';
 import './MarketPanel.css';
 
-// Active chart instruments
-const INSTRUMENTS = [
-    { key: 'gold', symbol: 'XAUUSD', title: 'Gold Spot / USD', icon: Gem, accent: '#f0b90b', precision: 2 },
+// Market tabs
+const MARKET_TABS = [
+    { id: 'crypto', label: 'Crypto', icon: Bitcoin, color: '#f7931a' },
+    { id: 'stocks', label: 'Stocks & Indices', icon: Building2, color: '#3b82f6' },
+    { id: 'forex', label: 'Forex', icon: DollarSign, color: '#0ecb81' },
+    { id: 'commodities', label: 'Commodities', icon: Fuel, color: '#f0b90b' },
+];
+
+// Commodity instruments for chart
+const COMMODITY_INSTRUMENTS = [
+    { key: 'gold', symbol: 'XAUUSD', title: 'Gold / USD', icon: Gem, accent: '#f0b90b', precision: 2 },
     { key: 'wti', symbol: 'CL', title: 'WTI Crude Oil', icon: Droplets, accent: '#3b82f6', precision: 2 },
     { key: 'brent', symbol: 'BRN', title: 'Brent Crude Oil', icon: Droplets, accent: '#06b6d4', precision: 2 },
 ];
@@ -29,14 +44,245 @@ function ChangeIcon({ value }) {
     return <Minus size={12} />;
 }
 
-export default function MarketPanel() {
+function formatNum(n, precision = 2) {
+    if (n == null) return '—';
+    if (n >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
+    if (n >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
+    if (n >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
+    return `$${Number(n).toLocaleString('en-US', { minimumFractionDigits: precision, maximumFractionDigits: precision })}`;
+}
+
+function formatPrice(price) {
+    if (price == null) return '—';
+    if (price >= 1000) return price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (price >= 1) return price.toFixed(2);
+    if (price >= 0.01) return price.toFixed(4);
+    return price.toFixed(6);
+}
+
+// ========================================
+// CRYPTO TAB
+// ========================================
+function CryptoTab({ searchQuery }) {
+    const fetchFn = useCallback(() => fetchCryptoPrices(), []);
+    const { data: coins, loading, lastUpdated, refresh } = useAutoRefresh(fetchFn, 5 * 60 * 1000, []);
+
+    const filtered = (coins || []).filter(c =>
+        !searchQuery || c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        c.symbol.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    if (loading && !coins?.length) {
+        return <div className="mp-loading"><RefreshCw size={18} className="spinning" /> Loading crypto data...</div>;
+    }
+
+    if (!coins?.length) {
+        return <div className="mp-empty"><WifiOff size={24} /><span>Crypto data unavailable</span></div>;
+    }
+
+    return (
+        <div className="mp-tab-content fade-in">
+            <div className="mp-tab-header">
+                <span className="mp-tab-count">{filtered.length} assets</span>
+                <button className="market-panel__refresh" onClick={refresh}>
+                    <RefreshCw size={12} className={loading ? 'spinning' : ''} />
+                    {lastUpdated && <span>{lastUpdated.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>}
+                </button>
+            </div>
+
+            <div className="mp-table">
+                <div className="mp-table__head">
+                    <span className="mp-th mp-th--rank">#</span>
+                    <span className="mp-th mp-th--name">Name</span>
+                    <span className="mp-th mp-th--price">Price</span>
+                    <span className="mp-th mp-th--change">1h %</span>
+                    <span className="mp-th mp-th--change">24h %</span>
+                    <span className="mp-th mp-th--change">7d %</span>
+                    <span className="mp-th mp-th--mcap">Market Cap</span>
+                    <span className="mp-th mp-th--sparkline">7D Chart</span>
+                </div>
+
+                {filtered.map(coin => (
+                    <div key={coin.id} className="mp-table__row">
+                        <span className="mp-td mp-td--rank">{coin.rank}</span>
+                        <span className="mp-td mp-td--name">
+                            <img src={coin.image} alt="" className="mp-coin-icon" />
+                            <span className="mp-coin-name">{coin.name}</span>
+                            <span className="mp-coin-symbol">{coin.symbol}</span>
+                        </span>
+                        <span className="mp-td mp-td--price">${formatPrice(coin.price)}</span>
+                        <span className={`mp-td mp-td--change ${coin.change1h >= 0 ? 'mp-green' : 'mp-red'}`}>
+                            <ChangeIcon value={coin.change1h} /> {Math.abs(coin.change1h || 0).toFixed(2)}%
+                        </span>
+                        <span className={`mp-td mp-td--change ${coin.change24h >= 0 ? 'mp-green' : 'mp-red'}`}>
+                            <ChangeIcon value={coin.change24h} /> {Math.abs(coin.change24h || 0).toFixed(2)}%
+                        </span>
+                        <span className={`mp-td mp-td--change ${coin.change7d >= 0 ? 'mp-green' : 'mp-red'}`}>
+                            <ChangeIcon value={coin.change7d} /> {Math.abs(coin.change7d || 0).toFixed(2)}%
+                        </span>
+                        <span className="mp-td mp-td--mcap">{formatNum(coin.marketCap, 0)}</span>
+                        <span className="mp-td mp-td--sparkline">
+                            {coin.sparkline?.length > 0 && (
+                                <MiniSparkline data={coin.sparkline} color={coin.change7d >= 0 ? '#0ecb81' : '#f6465d'} />
+                            )}
+                        </span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+// Mini sparkline SVG
+function MiniSparkline({ data, color = '#0ecb81', width = 80, height = 28 }) {
+    if (!data || data.length < 2) return null;
+    const min = Math.min(...data);
+    const max = Math.max(...data);
+    const range = max - min || 1;
+    const step = width / (data.length - 1);
+    const points = data.map((v, i) => `${i * step},${height - ((v - min) / range) * height}`).join(' ');
+    return (
+        <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="mp-sparkline-svg">
+            <polyline points={points} fill="none" stroke={color} strokeWidth="1.5" />
+        </svg>
+    );
+}
+
+// ========================================
+// STOCKS TAB
+// ========================================
+function StocksTab({ searchQuery }) {
+    const fetchFn = useCallback(() => fetchStockIndices(), []);
+    const { data: stocks, loading, lastUpdated, refresh } = useAutoRefresh(fetchFn, 5 * 60 * 1000, []);
+
+    const filtered = (stocks || []).filter(s =>
+        !searchQuery || s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        s.symbol.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    if (loading && !stocks?.length) {
+        return <div className="mp-loading"><RefreshCw size={18} className="spinning" /> Loading stock data...</div>;
+    }
+
+    if (!stocks?.length) {
+        return (
+            <div className="mp-empty">
+                <WifiOff size={24} />
+                <span>Stock data unavailable</span>
+                <span className="mp-empty__hint">Add FINNHUB_KEY to Vercel env vars (free at finnhub.io)</span>
+            </div>
+        );
+    }
+
+    return (
+        <div className="mp-tab-content fade-in">
+            <div className="mp-tab-header">
+                <span className="mp-tab-count">{filtered.length} instruments</span>
+                <button className="market-panel__refresh" onClick={refresh}>
+                    <RefreshCw size={12} className={loading ? 'spinning' : ''} />
+                    {lastUpdated && <span>{lastUpdated.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>}
+                </button>
+            </div>
+
+            <div className="mp-stocks-grid">
+                {filtered.map(stock => (
+                    <div key={stock.symbol} className="mp-stock-card">
+                        <div className="mp-stock-card__header">
+                            <span className="mp-stock-card__icon">{stock.icon}</span>
+                            <div>
+                                <span className="mp-stock-card__symbol">{stock.symbol}</span>
+                                <span className="mp-stock-card__name">{stock.name}</span>
+                            </div>
+                            <span className="mp-stock-card__sector">{stock.sector}</span>
+                        </div>
+                        <div className="mp-stock-card__price">${formatPrice(stock.price)}</div>
+                        <div className={`mp-stock-card__change ${stock.changePercent >= 0 ? 'mp-green' : 'mp-red'}`}>
+                            <ChangeIcon value={stock.changePercent} />
+                            <span>${Math.abs(stock.change).toFixed(2)}</span>
+                            <span>({Math.abs(stock.changePercent).toFixed(2)}%)</span>
+                        </div>
+                        <div className="mp-stock-card__range">
+                            <span>L: ${formatPrice(stock.low)}</span>
+                            <span>H: ${formatPrice(stock.high)}</span>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+// ========================================
+// FOREX TAB (existing, refactored)
+// ========================================
+function ForexTab({ searchQuery }) {
+    const { snapshot, loading, lastUpdated, refresh } = useGlobalData();
+    const [activeRegion, setActiveRegion] = useState('All');
+
+    const forexRates = snapshot?.forex?.rates || {};
+    const forexPrev = snapshot?.forex?.previous || {};
+
+    const pairs = FOREX_PAIRS.map(p => {
+        const rate = forexRates[p.to];
+        const prev = forexPrev[p.to];
+        const change = rate && prev ? +((rate - prev) / prev * 100).toFixed(4) : 0;
+        return { ...p, rate, change };
+    }).filter(p => p.rate);
+
+    const filtered = pairs.filter(p => {
+        const matchRegion = activeRegion === 'All' || p.region === activeRegion;
+        const matchSearch = !searchQuery || p.pair.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            p.to.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchRegion && matchSearch;
+    });
+
+    return (
+        <div className="mp-tab-content fade-in">
+            <div className="mp-tab-header">
+                <div className="mp-region-tabs">
+                    {FOREX_REGIONS.map(r => (
+                        <button key={r} className={`mp-region-tab ${activeRegion === r ? 'mp-region-tab--active' : ''}`}
+                            onClick={() => setActiveRegion(r)}>
+                            {r}
+                        </button>
+                    ))}
+                </div>
+                <span className="mp-tab-count">{filtered.length} pairs</span>
+            </div>
+
+            <div className="mp-table">
+                <div className="mp-table__head">
+                    <span className="mp-th mp-th--name">Pair</span>
+                    <span className="mp-th mp-th--price">Rate</span>
+                    <span className="mp-th mp-th--change">Change %</span>
+                    <span className="mp-th mp-th--region">Region</span>
+                </div>
+                {filtered.map(p => (
+                    <div key={p.pair} className="mp-table__row">
+                        <span className="mp-td mp-td--name">
+                            <span className="mp-forex-flag">{p.flag}</span>
+                            <span className="mp-coin-name">{p.pair}</span>
+                        </span>
+                        <span className="mp-td mp-td--price">{p.rate?.toFixed(4)}</span>
+                        <span className={`mp-td mp-td--change ${p.change >= 0 ? 'mp-green' : 'mp-red'}`}>
+                            <ChangeIcon value={p.change} /> {Math.abs(p.change).toFixed(4)}%
+                        </span>
+                        <span className="mp-td mp-td--region">{p.region}</span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+// ========================================
+// COMMODITIES TAB (existing, refactored)
+// ========================================
+function CommoditiesTab() {
     const { snapshot, loading, lastUpdated, refresh } = useGlobalData();
     const [activeInstrument, setActiveInstrument] = useState('gold');
     const [chartType, setChartType] = useState('area');
-    const [searchQuery, setSearchQuery] = useState('');
-    const [activeRegion, setActiveRegion] = useState('All');
 
-    // Get instrument data
     const getInstrumentData = (key) => {
         if (!snapshot) return null;
         switch (key) {
@@ -47,244 +293,153 @@ export default function MarketPanel() {
         }
     };
 
-    // Build chart data from history
-    const chartData = useMemo(() => {
-        const data = getInstrumentData(activeInstrument);
-        if (!data?.history?.length) return [];
+    const getChartData = () => {
+        if (!snapshot) return [];
+        const active = activeInstrument;
+        if (active === 'gold' && snapshot.gold?.history) {
+            return snapshot.gold.history.map(h => ({
+                time: h.date,
+                value: h.value,
+                open: h.value * 0.999, high: h.value * 1.002,
+                low: h.value * 0.998, close: h.value,
+            }));
+        }
+        if (active === 'wti' && snapshot.oil?.wtiHistory) {
+            return snapshot.oil.wtiHistory.map(h => ({
+                time: h.date,
+                value: h.value,
+                open: h.value * 0.998, high: h.value * 1.003,
+                low: h.value * 0.997, close: h.value,
+            }));
+        }
+        if (active === 'brent' && snapshot.oil?.brentHistory) {
+            return snapshot.oil.brentHistory.map(h => ({
+                time: h.date,
+                value: h.value,
+                open: h.value * 0.998, high: h.value * 1.003,
+                low: h.value * 0.997, close: h.value,
+            }));
+        }
+        return [];
+    };
 
-        return data.history.map((point, i, arr) => {
-            const price = point.value;
-            // Generate OHLC from daily close data
-            // Since API gives close only, simulate OHLC for candlestick view
-            const volatility = price * 0.005; // 0.5% daily range
-            const seed = Array.from(point.date).reduce((a, c) => a + c.charCodeAt(0), 0);
-            const r1 = Math.sin(seed * 1.1);
-            const r2 = Math.sin(seed * 2.3);
-            const prevPrice = i > 0 ? arr[i - 1].value : price;
-            const isUp = price >= prevPrice;
-
-            return {
-                time: point.date,
-                close: price,
-                open: isUp ? price - Math.abs(r1) * volatility : price + Math.abs(r1) * volatility,
-                high: price + Math.abs(r2) * volatility + volatility * 0.3,
-                low: price - Math.abs(r1 * r2) * volatility - volatility * 0.3,
-                value: price,
-            };
-        });
-    }, [activeInstrument, snapshot]);
-
-    const activeConfig = INSTRUMENTS.find(i => i.key === activeInstrument);
-
-    // Filter forex
-    const filteredForex = useMemo(() => {
-        if (!snapshot?.forex) return [];
-        return snapshot.forex.filter(fx => {
-            const matchSearch = !searchQuery ||
-                fx.pair.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                fx.region.toLowerCase().includes(searchQuery.toLowerCase());
-            const matchRegion = activeRegion === 'All' || fx.region === activeRegion;
-            return matchSearch && matchRegion;
-        });
-    }, [snapshot?.forex, searchQuery, activeRegion]);
+    const activeData = getInstrumentData(activeInstrument);
+    const activeMeta = COMMODITY_INSTRUMENTS.find(i => i.key === activeInstrument);
 
     return (
-        <div className="market-panel fade-in">
-            {/* Status bar */}
-            <div className="market-panel__status">
-                <div className="market-panel__status-left">
-                    {snapshot?.isRealForex && <span className="badge badge-green"><Wifi size={10} /> Forex Live</span>}
-                    {snapshot?.isRealOil && <span className="badge badge-green"><Wifi size={10} /> Oil Live</span>}
-                    {snapshot?.isRealGold && <span className="badge badge-green"><Wifi size={10} /> Gold Live</span>}
-                    {!snapshot?.isRealOil && !loading && <span className="badge badge-blue">Commodities: Simulated</span>}
-                </div>
-                <button className="market-panel__refresh" onClick={refresh} title="Refresh data">
-                    <RefreshCw size={14} className={loading ? 'spinning' : ''} />
-                    {lastUpdated && (
-                        <span>Updated {lastUpdated.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
-                    )}
-                </button>
-            </div>
-
-            {/* Ticker Cards — Binance style */}
-            <div className="market-ticker">
-                {INSTRUMENTS.map(inst => {
-                    const data = getInstrumentData(inst.key);
-                    const isActive = activeInstrument === inst.key;
-                    const price = data?.price;
-                    const pct = data?.changePercent || 0;
-                    const isUp = pct >= 0;
-
+        <div className="mp-tab-content fade-in">
+            {/* Commodity ticker cards */}
+            <div className="mp-ticker-row">
+                {COMMODITY_INSTRUMENTS.map(inst => {
+                    const d = getInstrumentData(inst.key);
                     return (
-                        <div
-                            key={inst.key}
-                            className={`ticker-card ${isActive ? 'ticker-card--active' : ''}`}
-                            style={{ '--ticker-accent': inst.accent }}
+                        <button key={inst.key}
+                            className={`mp-ticker-card ${activeInstrument === inst.key ? 'mp-ticker-card--active' : ''}`}
                             onClick={() => setActiveInstrument(inst.key)}
-                        >
-                            <div className="ticker-card__top">
-                                <div className="ticker-card__symbol">
-                                    <div className="ticker-card__icon" style={{ background: `${inst.accent}15`, color: inst.accent }}>
-                                        <inst.icon size={14} />
-                                    </div>
-                                    <div>
-                                        <div className="ticker-card__name">{inst.symbol}</div>
-                                        <div className="ticker-card__label">{inst.title}</div>
-                                    </div>
+                            style={{ '--accent': inst.accent }}>
+                            <div className="mp-ticker-card__top">
+                                <inst.icon size={14} />
+                                <span className="mp-ticker-card__symbol">{inst.symbol}</span>
+                            </div>
+                            <div className="mp-ticker-card__price">
+                                {d ? `$${formatPrice(d.price)}` : '—'}
+                            </div>
+                            {d && (
+                                <div className={`mp-ticker-card__change ${d.changePercent >= 0 ? 'mp-green' : 'mp-red'}`}>
+                                    <ChangeIcon value={d.changePercent} />
+                                    <span>{Math.abs(d.changePercent || 0).toFixed(2)}%</span>
                                 </div>
-                                <div className={`ticker-card__badge ${isUp ? 'ticker-card__badge--up' : 'ticker-card__badge--down'}`}>
-                                    <ChangeIcon value={pct} /> {formatPercent(pct)}
-                                </div>
-                            </div>
-                            <div className="ticker-card__price">
-                                {loading ? '—' : formatCurrency(price)}
-                            </div>
-                            <div className="ticker-card__change" style={{ color: getChangeColor(pct) }}>
-                                <ChangeIcon value={pct} />
-                                <span>{formatCurrency(Math.abs(data?.change || 0))}</span>
-                                <span style={{ color: '#848e9c', fontSize: '0.6rem' }}>24h</span>
-                            </div>
-                        </div>
+                            )}
+                        </button>
                     );
                 })}
             </div>
 
-            {/* Chart Section */}
-            <div className="market-panel__chart-wrapper">
-                {/* Chart Type Controls — Binance tabs */}
-                <div className="chart-controls">
-                    <div className="chart-controls__group">
-                        <button
-                            className={`chart-btn chart-btn--type ${chartType === 'area' ? 'chart-btn--active' : ''}`}
-                            onClick={() => setChartType('area')}
-                            title="Area Chart"
-                        >
-                            <LineChart size={13} />
-                        </button>
-                        <button
-                            className={`chart-btn chart-btn--type ${chartType === 'candlestick' ? 'chart-btn--active' : ''}`}
-                            onClick={() => setChartType('candlestick')}
-                            title="Candlestick"
-                        >
-                            <CandlestickChart size={13} />
-                        </button>
-                        <button
-                            className={`chart-btn chart-btn--type ${chartType === 'line' ? 'chart-btn--active' : ''}`}
-                            onClick={() => setChartType('line')}
-                            title="Line Chart"
-                        >
-                            <BarChart3 size={13} />
-                        </button>
-                    </div>
-
-                    <div className="chart-controls__divider" />
-
-                    <a
-                        href={EXTERNAL_LINKS[activeInstrument === 'gold' ? 'GOLD' : activeInstrument === 'wti' ? 'WTI' : 'BRENT']}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="chart-btn"
-                        style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4 }}
-                    >
-                        TradingView <ExternalLink size={10} />
-                    </a>
-                </div>
-
-                {/* TradingView Chart */}
-                {chartData.length > 0 ? (
-                    <TradingChart
-                        key={`${activeInstrument}-${chartType}`}
-                        data={chartData}
-                        symbol={activeConfig.symbol}
-                        title={activeConfig.title}
-                        chartType={chartType}
-                        height={380}
-                        accentColor={activeConfig.accent}
-                        precision={activeConfig.precision}
-                    />
-                ) : (
-                    <div style={{ height: 380, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#5e6571' }}>
-                        {loading ? 'Loading chart data...' : 'No historical data available (fallback mode)'}
-                    </div>
-                )}
-            </div>
-
-            {/* Forex Table — OKX style */}
-            <div className="forex-pro">
-                <div className="forex-pro__header">
-                    <div className="forex-pro__title">
-                        💱 Foreign Exchange Rates
-                        <span className="badge badge-blue" style={{ fontSize: '0.6rem' }}>{filteredForex.length} pairs</span>
-                        {snapshot?.isRealForex && <span className="badge badge-green" style={{ fontSize: '0.55rem' }}>LIVE</span>}
-                    </div>
-                    <div className="forex-pro__search">
-                        <Search size={12} />
-                        <input
-                            type="text"
-                            placeholder="Search pair..."
-                            value={searchQuery}
-                            onChange={e => setSearchQuery(e.target.value)}
-                        />
-                    </div>
-                </div>
-
-                <div className="forex-pro__filters">
-                    {FOREX_REGIONS.map(region => (
-                        <button
-                            key={region}
-                            className={`chart-btn ${activeRegion === region ? 'chart-btn--active' : ''}`}
-                            onClick={() => setActiveRegion(region)}
-                        >
-                            {region}
+            {/* Chart type toggle */}
+            <div className="mp-chart-controls">
+                <span className="mp-chart-title">
+                    {activeMeta?.title || 'Chart'}
+                    {activeData && (
+                        <span className={getChangeColor(activeData.changePercent)}>
+                            {' '}{activeData.change >= 0 ? '+' : ''}{activeData.change?.toFixed(2)} ({activeData.changePercent?.toFixed(2)}%)
+                        </span>
+                    )}
+                </span>
+                <div className="mp-chart-toggles">
+                    {[
+                        { type: 'area', icon: BarChart3 },
+                        { type: 'candlestick', icon: CandlestickChart },
+                        { type: 'line', icon: LineChart },
+                    ].map(({ type, icon: Icon }) => (
+                        <button key={type}
+                            className={`mp-chart-toggle ${chartType === type ? 'mp-chart-toggle--active' : ''}`}
+                            onClick={() => setChartType(type)}>
+                            <Icon size={14} />
                         </button>
                     ))}
                 </div>
-
-                {loading ? (
-                    <div style={{ padding: 16 }}>
-                        {[1, 2, 3, 4, 5, 6].map(i => (
-                            <div key={i} className="skeleton" style={{ height: 36, marginBottom: 8, borderRadius: 8 }} />
-                        ))}
-                    </div>
-                ) : (
-                    <>
-                        <div className="forex-pro__col-header">
-                            <span>Pair</span>
-                            <span>Price</span>
-                            <span>24h Change</span>
-                        </div>
-                        <div className="forex-pro__body">
-                            {filteredForex.map((fx, i) => {
-                                const pct = fx.changePercent || 0;
-                                const isUp = pct >= 0;
-                                const href = EXTERNAL_LINKS.forexPair('USD', fx.pair?.split('/')[1] || 'EUR');
-
-                                return (
-                                    <a key={i} href={href} target="_blank" rel="noopener noreferrer" className="forex-pro__row">
-                                        <div className="forex-pro__pair">
-                                            <span className="forex-pro__flag">{fx.flag}</span>
-                                            <div className="forex-pro__pair-info">
-                                                <span className="forex-pro__pair-name">{fx.pair}</span>
-                                                <span className="forex-pro__pair-region">{fx.region}</span>
-                                            </div>
-                                        </div>
-                                        <span className="forex-pro__rate">
-                                            {fx.value?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
-                                        </span>
-                                        <span className={`forex-pro__pct ${isUp ? 'forex-pro__pct--up' : pct < 0 ? 'forex-pro__pct--down' : 'forex-pro__pct--flat'}`}>
-                                            <ChangeIcon value={pct} />
-                                            {formatPercent(pct)}
-                                        </span>
-                                    </a>
-                                );
-                            })}
-                            {filteredForex.length === 0 && (
-                                <div className="forex-pro__empty">No currencies match your search</div>
-                            )}
-                        </div>
-                    </>
-                )}
             </div>
+
+            {/* TradingView chart */}
+            <div className="mp-chart-container">
+                <TradingChart
+                    data={getChartData()}
+                    chartType={chartType}
+                    color={activeMeta?.accent || CHART_COLORS.ACCENT}
+                    height={350}
+                />
+            </div>
+        </div>
+    );
+}
+
+// ========================================
+// MAIN MARKET PANEL
+// ========================================
+export default function MarketPanel() {
+    const [activeTab, setActiveTab] = useState('crypto');
+    const [searchQuery, setSearchQuery] = useState('');
+
+    return (
+        <div className="mp fade-in">
+            {/* Header */}
+            <div className="mp-header">
+                <div className="mp-header__left">
+                    <BarChart3 size={18} style={{ color: 'var(--accent-blue)' }} />
+                    <h2 className="mp-header__title">Markets</h2>
+                    <span className="badge badge-green"><Wifi size={10} /> Live</span>
+                </div>
+                <div className="mp-header__right">
+                    <div className="mp-search">
+                        <Search size={13} />
+                        <input type="text" placeholder="Search markets..."
+                            value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+                            className="mp-search__input" />
+                    </div>
+                </div>
+            </div>
+
+            {/* Market category tabs */}
+            <div className="mp-market-tabs">
+                {MARKET_TABS.map(tab => {
+                    const Icon = tab.icon;
+                    return (
+                        <button key={tab.id}
+                            className={`mp-market-tab ${activeTab === tab.id ? 'mp-market-tab--active' : ''}`}
+                            onClick={() => { setActiveTab(tab.id); setSearchQuery(''); }}
+                            style={{ '--tab-color': tab.color }}>
+                            <Icon size={14} />
+                            <span>{tab.label}</span>
+                        </button>
+                    );
+                })}
+            </div>
+
+            {/* Tab content */}
+            {activeTab === 'crypto' && <CryptoTab searchQuery={searchQuery} />}
+            {activeTab === 'stocks' && <StocksTab searchQuery={searchQuery} />}
+            {activeTab === 'forex' && <ForexTab searchQuery={searchQuery} />}
+            {activeTab === 'commodities' && <CommoditiesTab />}
         </div>
     );
 }

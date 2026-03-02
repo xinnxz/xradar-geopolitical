@@ -277,3 +277,62 @@ export function getGoldData(days = 30) {
   setCache(cacheKey, data, 60 * 60 * 1000);
   return data;
 }
+
+// ---------- CRYPTO (CoinGecko via Vercel proxy) ----------
+
+/**
+ * Fetch crypto prices from /api/crypto (CoinGecko)
+ * Returns top 15 coins with prices, changes, sparklines
+ */
+export async function fetchCryptoPrices() {
+  const cacheKey = 'crypto_prices';
+  const cached = getCache(cacheKey);
+  if (cached) return cached;
+
+  // Only on Vercel
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return [];
+  }
+
+  try {
+    const res = await fetch('/api/crypto');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    if (json.error) throw new Error(json.error);
+    const data = json.data || [];
+    if (data.length > 0) setCache(cacheKey, data, 5 * 60 * 1000);
+    return data;
+  } catch (e) {
+    console.error('Crypto fetch error:', e);
+    return [];
+  }
+}
+
+// ---------- STOCKS/INDICES (Finnhub via Vercel proxy) ----------
+
+/**
+ * Fetch stock indices from /api/stocks (Finnhub)
+ * Returns SPY, QQQ, DIA, VIX, etc.
+ */
+export async function fetchStockIndices() {
+  const cacheKey = 'stock_indices';
+  const cached = getCache(cacheKey);
+  if (cached) return cached;
+
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return [];
+  }
+
+  try {
+    const res = await fetch('/api/stocks');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    if (json.error) throw new Error(json.error);
+    const data = json.data || [];
+    if (data.length > 0) setCache(cacheKey, data, 5 * 60 * 1000);
+    return data;
+  } catch (e) {
+    console.error('Stocks fetch error:', e);
+    return [];
+  }
+}
