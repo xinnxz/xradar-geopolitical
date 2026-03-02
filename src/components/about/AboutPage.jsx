@@ -4,7 +4,11 @@
 // ========================================
 
 import { useState } from 'react';
-import { Info, Shield, FileText, AlertTriangle, ExternalLink, Mail, Globe } from 'lucide-react';
+import {
+    Info, Shield, FileText, AlertTriangle, Mail, Globe,
+    Bitcoin, TrendingUp, DollarSign, Fuel, MapPin, Newspaper,
+    Wrench, Lock, Radio
+} from 'lucide-react';
 import './AboutPage.css';
 
 const TABS = [
@@ -50,7 +54,7 @@ export default function AboutPage() {
 function AboutContent() {
     return (
         <div className="about-section fade-in">
-            <h3>🌍 What is GlobalWar.live?</h3>
+            <h3><Radio size={16} className="about-icon about-icon--blue" /> What is GlobalWar.live?</h3>
             <p>
                 GlobalWar.live is a <strong>real-time geopolitical intelligence and market monitoring dashboard</strong> that tracks
                 global conflicts, their economic impact, and financial markets — all in one place.
@@ -60,45 +64,45 @@ function AboutContent() {
                 we provide the tools to stay informed and make better decisions.
             </p>
 
-            <h3>📊 What We Track</h3>
+            <h3><TrendingUp size={16} className="about-icon about-icon--green" /> What We Track</h3>
             <div className="about-features">
                 <div className="about-feature">
-                    <span className="about-feature__icon">🪙</span>
+                    <span className="about-feature__icon"><Bitcoin size={18} style={{ color: '#f7931a' }} /></span>
                     <div>
                         <strong>Cryptocurrency</strong>
                         <span>15+ coins — BTC, ETH, SOL, and more via CoinGecko</span>
                     </div>
                 </div>
                 <div className="about-feature">
-                    <span className="about-feature__icon">📈</span>
+                    <span className="about-feature__icon"><TrendingUp size={18} style={{ color: '#3b82f6' }} /></span>
                     <div>
                         <strong>Stock Indices</strong>
                         <span>S&P 500, NASDAQ, Dow Jones, VIX Fear Index via Finnhub</span>
                     </div>
                 </div>
                 <div className="about-feature">
-                    <span className="about-feature__icon">💱</span>
+                    <span className="about-feature__icon"><DollarSign size={18} style={{ color: '#0ecb81' }} /></span>
                     <div>
                         <strong>Forex</strong>
                         <span>29 currency pairs from ECB via Frankfurter API</span>
                     </div>
                 </div>
                 <div className="about-feature">
-                    <span className="about-feature__icon">🛢️</span>
+                    <span className="about-feature__icon"><Fuel size={18} style={{ color: '#f0b90b' }} /></span>
                     <div>
                         <strong>Commodities</strong>
                         <span>Gold, WTI Oil, Brent Crude via Alpha Vantage</span>
                     </div>
                 </div>
                 <div className="about-feature">
-                    <span className="about-feature__icon">🗺️</span>
+                    <span className="about-feature__icon"><MapPin size={18} style={{ color: '#f6465d' }} /></span>
                     <div>
                         <strong>Conflict Tracking</strong>
                         <span>Armed conflict events from ACLED (Armed Conflict Location & Event Data)</span>
                     </div>
                 </div>
                 <div className="about-feature">
-                    <span className="about-feature__icon">📰</span>
+                    <span className="about-feature__icon"><Newspaper size={18} style={{ color: '#8b5cf6' }} /></span>
                     <div>
                         <strong>Live News</strong>
                         <span>Geopolitical news with infinite scroll via GNews API</span>
@@ -106,13 +110,13 @@ function AboutContent() {
                 </div>
             </div>
 
-            <h3>🔧 Technology</h3>
+            <h3><Wrench size={16} className="about-icon about-icon--muted" /> Technology</h3>
             <p>
                 Built with React, Vite, Lightweight Charts (TradingView), and Vercel Serverless Functions.
                 All market data is fetched in real-time from public APIs with intelligent caching and key rotation.
             </p>
 
-            <h3>📬 Contact</h3>
+            <h3><Mail size={16} className="about-icon about-icon--blue" /> Contact</h3>
             <p>
                 <Mail size={14} style={{ verticalAlign: 'middle' }} /> Email: <a href="mailto:contact@globalwar.live">contact@globalwar.live</a>
             </p>
@@ -126,7 +130,7 @@ function AboutContent() {
 function DisclaimerContent() {
     return (
         <div className="about-section fade-in">
-            <h3>⚠️ Disclaimer</h3>
+            <h3><AlertTriangle size={16} className="about-icon about-icon--yellow" /> Disclaimer</h3>
             <p><strong>Last updated: March 2026</strong></p>
 
             <h4>Not Financial Advice</h4>
@@ -164,7 +168,7 @@ function DisclaimerContent() {
 function PrivacyContent() {
     return (
         <div className="about-section fade-in">
-            <h3>🔒 Privacy Policy</h3>
+            <h3><Lock size={16} className="about-icon about-icon--green" /> Privacy Policy</h3>
             <p><strong>Last updated: March 2026</strong></p>
 
             <h4>Information We Collect</h4>
@@ -202,7 +206,7 @@ function PrivacyContent() {
 function TermsContent() {
     return (
         <div className="about-section fade-in">
-            <h3>📄 Terms of Use</h3>
+            <h3><FileText size={16} className="about-icon about-icon--blue" /> Terms of Use</h3>
             <p><strong>Last updated: March 2026</strong></p>
 
             <h4>Acceptance of Terms</h4>

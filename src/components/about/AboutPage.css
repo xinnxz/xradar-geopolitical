@@ -131,3 +131,14 @@
   font-size: 0.65rem;
   color: var(--text-muted);
 }
+
+/* Heading icons */
+.about-icon {
+  vertical-align: -2px;
+  margin-right: 4px;
+}
+.about-icon--blue { color: var(--accent-blue); }
+.about-icon--green { color: #0ecb81; }
+.about-icon--yellow { color: #f0b90b; }
+.about-icon--red { color: #f6465d; }
+.about-icon--muted { color: var(--text-muted); }
