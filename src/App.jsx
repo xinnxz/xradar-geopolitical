@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { GlobalDataProvider } from './hooks/useGlobalData';
+import { usePageMeta } from './hooks/usePageMeta';
 import ErrorBoundary from './components/layout/ErrorBoundary';
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
@@ -12,9 +13,16 @@ import RiskPanel from './components/risk/RiskPanel';
 import AboutPage from './components/about/AboutPage';
 import './App.css';
 
+// SEO: update meta tags on every route change
+function PageMeta() {
+  usePageMeta();
+  return null;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
+      <PageMeta />
       <GlobalDataProvider>
         <div className="app">
           <Sidebar />

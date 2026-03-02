@@ -53,12 +53,32 @@
         "@type": "Organization",
         "name": "GlobalWar.live",
         "url": "https://globalwar.live"
-      }
+      },
+      "sameAs": []
     }
     </script>
+
+    <!-- Preconnect: faster API resolution -->
+    <link rel="preconnect" href="https://api.coingecko.com" crossorigin />
+    <link rel="preconnect" href="https://finnhub.io" crossorigin />
+    <link rel="preconnect" href="https://gnews.io" crossorigin />
+    <link rel="dns-prefetch" href="https://api.frankfurter.dev" />
+    <link rel="dns-prefetch" href="https://www.alphavantage.co" />
   </head>
   <body>
     <div id="root"></div>
+    <noscript>
+      <div style="padding:40px;text-align:center;color:#fff;background:#070b14;min-height:100vh">
+        <h1>GlobalWar.live</h1>
+        <p>Real-time geopolitical intelligence and market monitoring dashboard.</p>
+        <p>Track global conflicts, crypto, stocks, forex, and commodities.</p>
+        <p>Please enable JavaScript to use this application.</p>
+        <p><a href="https://globalwar.live/about" style="color:#3b82f6">About</a> |
+           <a href="https://globalwar.live/markets" style="color:#3b82f6">Markets</a> |
+           <a href="https://globalwar.live/news" style="color:#3b82f6">News</a></p>
+      </div>
+    </noscript>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
+
