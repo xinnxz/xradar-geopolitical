@@ -148,3 +148,17 @@
   color: var(--text-muted);
   font-size: 0.7rem;
 }
+
+/* MOBILE */
+@media (max-width: 768px) {
+  .header {
+    left: 0;
+    padding: 0 var(--space-md);
+  }
+  .header__center { display: none; }
+  .header__title { font-size: 0.95rem; }
+  .header__subtitle { display: none; }
+  .header__clock { padding: 2px 8px; }
+  .header__date { display: none; }
+  .header__time { font-size: 0.7rem; }
+}

@@ -23,8 +23,21 @@
   flex-direction: column;
 }
 
-/* Page body fills available space, pushes footer down */
 .main-content__body {
   flex: 1;
   padding: var(--space-lg);
+}
+
+/* MOBILE: sidebar becomes bottom bar */
+@media (max-width: 768px) {
+  .app__main {
+    margin-left: 0;
+    width: 100%;
+  }
+  .main-content {
+    padding-bottom: 60px; /* space for bottom nav */
+  }
+  .main-content__body {
+    padding: var(--space-md);
+  }
 }

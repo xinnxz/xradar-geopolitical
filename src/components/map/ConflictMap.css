@@ -434,15 +434,32 @@
 
 @media (max-width: 768px) {
     .map-controls {
-        max-height: 200px;
-        font-size: 0.75rem;
+        max-height: 160px;
+        font-size: 0.7rem;
+        padding: var(--space-sm);
+    }
+    .map-controls__title { font-size: 0.8rem; }
+
+    .map-legend {
+        flex-wrap: wrap;
+        gap: 4px 10px;
+        font-size: 0.65rem;
+        padding: 4px 8px;
     }
 
     .map-stats {
         grid-template-columns: repeat(4, 1fr);
+        gap: 4px;
+        padding: 6px;
+    }
+    .map-stat-item__value { font-size: 0.9rem; }
+    .map-stat-item__label { font-size: 0.55rem; }
+
+    .market-panel__status {
+        flex-direction: column;
+        gap: 4px;
+        padding: 6px 8px;
     }
 
-    .map-stat-item__value {
-        font-size: 1rem;
-    }
+    .map-wrapper { min-height: 400px; }
 }
