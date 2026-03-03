@@ -18,34 +18,34 @@ const OG_IMAGE = `${BASE_URL}/og-image.png`;
  */
 const PAGE_META = {
   '/': {
-    title: `Global War Live — Real-time Geopolitical Risk & Market Dashboard`,
-    description: 'Global War monitoring dashboard. Track armed conflicts, geopolitical risk, crypto, stocks, forex, commodities in real-time. Free live intelligence platform.',
-    keywords: 'global war, global war live, war tracker, geopolitical risk, live dashboard, conflict map, market intelligence, global conflicts, war monitoring',
+    title: `Global War — Live War Intelligence & Conflict Monitoring Dashboard`,
+    description: 'Real-time OSINT war monitoring dashboard. 22 intelligence layers: missile strike trajectories, air defense systems, active frontlines, drone zones, refugee flows, military bases, nuclear sites — powered by public conflict data.',
+    keywords: 'global war, global war live, war tracker, OSINT, conflict map, war intelligence, geopolitical risk, missile strikes, air defense, frontlines, war monitoring, live war map',
   },
   '/markets': {
-    title: `Global War Markets — Live Crypto, Stocks, Forex & Commodities`,
-    description: 'Global War impact on markets. Track 50+ instruments: Bitcoin, S&P 500, gold, oil, 29 forex pairs — all affected by global conflicts and geopolitical events.',
-    keywords: 'global war markets, war impact stocks, conflict commodities, crypto war, forex geopolitics, gold price war',
+    title: `Global War Markets — War Impact on Crypto, Stocks, Forex & Commodities`,
+    description: 'Track how global conflicts impact financial markets in real-time. 50+ instruments: Bitcoin, S&P 500, gold, oil, 29 forex pairs — correlated with live war events and geopolitical risk.',
+    keywords: 'global war markets, war impact stocks, conflict commodities, crypto war, forex geopolitics, gold price war, oil conflict',
   },
   '/news': {
-    title: `Global War News — Live Geopolitical Conflict Updates`,
-    description: 'Global War news feed. Breaking coverage of armed conflicts, sanctions, military operations, and their impact on global markets. Updated in real-time.',
-    keywords: 'global war news, war updates, conflict news, geopolitical news, military news, war breaking news',
+    title: `Global War News — Live Conflict Intelligence & Military Updates`,
+    description: 'Real-time conflict intelligence feed. Breaking coverage of armed conflicts, military operations, sanctions, airstrikes, and their global impact. AI-powered analysis.',
+    keywords: 'global war news, war updates, conflict intelligence, military news, war breaking news, geopolitical news',
   },
   '/map': {
-    title: `Global War Map — Live Armed Conflicts Worldwide`,
-    description: 'Global War interactive conflict map. Visualize active armed conflicts, battles, riots, and violence events worldwide with ACLED data.',
-    keywords: 'global war map, conflict map, war map, armed conflicts map, battle map, violence tracker, ACLED',
+    title: `Global War Map — 22-Layer War Intelligence Visualization`,
+    description: 'Interactive OSINT conflict map with 22 layers: missile strike trajectories, air defense coverage (Iron Dome, S-400, THAAD), active frontlines, drone zones, naval blockades, refugee flows, military bases worldwide.',
+    keywords: 'global war map, conflict map, war map, OSINT map, missile strikes map, air defense map, frontlines map, military intelligence map',
   },
   '/risk': {
-    title: `Global War Risk Index — Live Geopolitical Risk Score`,
-    description: 'Global War risk assessment. Live geopolitical risk score calculated from conflict events, commodity prices, and news sentiment analysis.',
-    keywords: 'global war risk, geopolitical risk index, war risk score, conflict risk, global risk assessment',
+    title: `Global War Risk Index — Multi-Source Intelligence Risk Score`,
+    description: 'Live geopolitical risk score calculated from ACLED conflict data, commodity disruptions, cyber threat indicators, and AI-powered news sentiment analysis. Updated every 5 minutes.',
+    keywords: 'global war risk, geopolitical risk index, war risk score, conflict risk, global risk assessment, threat level',
   },
   '/about': {
-    title: `About Global War Live — Free Geopolitical Intelligence Platform`,
-    description: 'Global War Live: free real-time geopolitical intelligence and market monitoring. Track conflicts, their economic impact, and financial markets.',
-    keywords: 'about global war, globalwar live, geopolitical intelligence, free war dashboard, conflict tracker',
+    title: `About Global War — Free OSINT War Intelligence Platform`,
+    description: 'Global War: free open-source war intelligence platform. 22 monitoring layers, real-time conflict data from ACLED, strike trajectory visualization, air defense coverage mapping, and market impact analysis.',
+    keywords: 'about global war, globalwar live, OSINT platform, free war dashboard, conflict tracker, war intelligence',
   },
 };
 
