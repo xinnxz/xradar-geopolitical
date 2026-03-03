@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useEffect } from 'react';
 import {
     MapContainer, TileLayer, Rectangle, CircleMarker, Popup,
     Tooltip as MapTooltip, Polyline, Marker, Circle
@@ -12,6 +12,10 @@ import { fetchConflictEvents, buildConflictZones, getConflictZones } from '../..
 import { MAP_CONFIG, REFRESH_INTERVALS } from '../../utils/constants';
 import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import { MILITARY_BASES } from '../../data/militaryData';
+import { EXPANDED_BASES } from '../../data/expandedBases';
+import { PORTS } from '../../data/portsData';
+import { fetchEarthquakes } from '../../services/earthquakeService';
+import { fetchWildfires } from '../../services/wildfireService';
 import {
     NUCLEAR_FACILITIES, PIPELINES, UNDERSEA_CABLES, CONFLICT_ZONES,
     CHOKEPOINTS, FLIGHT_RESTRICTIONS
@@ -30,7 +34,8 @@ import {
     getSpaceportIcon, getDatacenterIcon, getIntelHotspotIcon,
     getVolcanoIcon, getEventIcon,
     getStrikeIcon, getAirDefenseIcon, getDroneZoneIcon,
-    getWeaponIcon, getCyberIcon
+    getWeaponIcon, getCyberIcon, getPortIcon,
+    getEarthquakeIcon, getWildfireIcon
 } from './mapIcons';
 import DefconBadge from './DefconBadge';
 import AlertBanner from './AlertBanner';
@@ -57,16 +62,18 @@ function EventPopup({ event }) {
 }
 
 function BasePopup({ base }) {
-    const typeEmoji = { air: '🛩️', navy: '⚓', army: '🪖', combined: '🏴' };
+    const typeEmoji = { air: '🛩️', navy: '⚓', army: '🪖', combined: '🏴', intel: '📡', space: '🚀' };
+    const statusColor = base.status === 'controversial' ? 'gold' : base.status === 'planned' ? 'purple' : 'green';
     return (
         <div className="map-popup">
             <h4 className="map-popup__title">{typeEmoji[base.type] || '🏴'} {base.name}</h4>
             <div className="map-popup__badges">
-                <span className={`badge badge-${base.operator === 'Russia' ? 'red' : base.operator === 'China' ? 'gold' : 'blue'}`}>
+                <span className={`badge badge-${base.operator === 'Russia' ? 'red' : base.operator === 'China' ? 'gold' : base.operator === 'Iran' ? 'red' : 'blue'}`}>
                     {base.operator}
                 </span>
                 <span className="badge badge-gray">{base.type.toUpperCase()}</span>
                 <span className="badge badge-gray">{base.country}</span>
+                {base.status && <span className={`badge badge-${statusColor}`}>{base.status.toUpperCase()}</span>}
             </div>
             <p className="map-popup__desc">{base.desc}</p>
         </div>
@@ -182,7 +189,8 @@ const LEG = {
 // ─── Main Component ─────────────────────────────────────────────────
 
 export default function ConflictMap() {
-    const [layers, setLayers] = useState({
+    // Default layer state
+    const DEFAULT_LAYERS = {
         // War & Combat
         strikes: true,
         frontlines: true,
@@ -207,13 +215,28 @@ export default function ConflictMap() {
         pipelines: true,
         cables: true,
         chokepoints: true,
-        // Science
+        ports: false,
+        // Science & Hazards
+        earthquakes: true,
+        wildfires: false,
         spaceports: false,
         datacenters: false,
         volcanoes: false,
+    };
+
+    // localStorage persistence for layer state
+    const [layers, setLayers] = useState(() => {
+        try {
+            const saved = localStorage.getItem('gw-map-layers');
+            return saved ? { ...DEFAULT_LAYERS, ...JSON.parse(saved) } : DEFAULT_LAYERS;
+        } catch { return DEFAULT_LAYERS; }
     });
 
-    const toggleLayer = (key) => setLayers(prev => ({ ...prev, [key]: !prev[key] }));
+    const toggleLayer = (key) => setLayers(prev => {
+        const next = { ...prev, [key]: !prev[key] };
+        try { localStorage.setItem('gw-map-layers', JSON.stringify(next)); } catch { }
+        return next;
+    });
 
     const fetchFn = useCallback(() => fetchConflictEvents(90), []);
     const { data: events, loading, lastUpdated, refresh } = useAutoRefresh(fetchFn, REFRESH_INTERVALS.RISK);
@@ -222,7 +245,23 @@ export default function ConflictMap() {
     const zones = useMemo(() => eventList.length > 0 ? buildConflictZones(eventList) : getConflictZones(), [eventList]);
     const isLive = eventList.length > 0 && eventList[0]?.source !== 'Mock';
 
+    // Merge original 53 curated bases + 157 expanded WorldMonitor bases
+    const allBases = useMemo(() => {
+        const existingIds = new Set(MILITARY_BASES.map(b => b.id));
+        const newBases = EXPANDED_BASES.filter(b => !existingIds.has(b.id));
+        return [...MILITARY_BASES, ...newBases];
+    }, []);
+
     const activeLayerCount = Object.values(layers).filter(Boolean).length;
+
+    // Fetch earthquake and wildfire data
+    const [earthquakes, setEarthquakes] = useState([]);
+    const [wildfires, setWildfires] = useState([]);
+
+    useEffect(() => {
+        fetchEarthquakes().then(setEarthquakes).catch(() => { });
+        fetchWildfires().then(setWildfires).catch(() => { });
+    }, []);
 
     return (
         <div className="conflict-map fade-in">
@@ -281,7 +320,7 @@ export default function ConflictMap() {
 
                 {/* ── MILITARY ── */}
                 <LayerGroup title="Military" icon={<Shield size={14} style={{ color: '#3b82f6' }} />}>
-                    <LayerToggle label="Military Bases" icon="🏴" count={MILITARY_BASES.length} checked={layers.militaryBases} onChange={() => toggleLayer('militaryBases')} />
+                    <LayerToggle label="Military Bases" icon="🏴" count={allBases.length} checked={layers.militaryBases} onChange={() => toggleLayer('militaryBases')} />
                     <LayerToggle label="Nuclear Sites" icon="☢️" count={NUCLEAR_FACILITIES.length} checked={layers.nuclear} onChange={() => toggleLayer('nuclear')} />
                     <LayerToggle label="Flight Routes" icon="✈️" count={MILITARY_FLIGHT_ROUTES.length} checked={layers.flightRoutes} onChange={() => toggleLayer('flightRoutes')} />
                 </LayerGroup>
@@ -291,6 +330,7 @@ export default function ConflictMap() {
                     <LayerToggle label="Pipelines" icon="🛢️" count={PIPELINES.length} checked={layers.pipelines} onChange={() => toggleLayer('pipelines')} />
                     <LayerToggle label="Undersea Cables" icon="🌐" count={UNDERSEA_CABLES.length} checked={layers.cables} onChange={() => toggleLayer('cables')} />
                     <LayerToggle label="Chokepoints" icon={<Anchor size={14} style={{ color: '#06b6d4' }} />} count={CHOKEPOINTS.length} checked={layers.chokepoints} onChange={() => toggleLayer('chokepoints')} />
+                    <LayerToggle label="World Ports" icon="🚢" count={PORTS.length} checked={layers.ports} onChange={() => toggleLayer('ports')} />
                 </LayerGroup>
 
                 {/* ── SCIENCE & TECH ── */}
@@ -298,6 +338,12 @@ export default function ConflictMap() {
                     <LayerToggle label="Spaceports" icon="🚀" count={SPACEPORTS.length} checked={layers.spaceports} onChange={() => toggleLayer('spaceports')} />
                     <LayerToggle label="AI Datacenters" icon="🖥️" count={AI_DATACENTERS.length} checked={layers.datacenters} onChange={() => toggleLayer('datacenters')} />
                     <LayerToggle label="Volcanoes" icon="🌋" count={ACTIVE_VOLCANOES.length} checked={layers.volcanoes} onChange={() => toggleLayer('volcanoes')} />
+                </LayerGroup>
+
+                {/* ── NATURAL HAZARDS ── */}
+                <LayerGroup title="Natural Hazards" icon="⚠️">
+                    <LayerToggle label="Earthquakes (USGS)" icon="🌍" count={earthquakes.length} checked={layers.earthquakes} onChange={() => toggleLayer('earthquakes')} />
+                    <LayerToggle label="Wildfires (NASA)" icon="🔥" count={wildfires.length} checked={layers.wildfires} onChange={() => toggleLayer('wildfires')} />
                 </LayerGroup>
             </div>
 
@@ -562,7 +608,7 @@ export default function ConflictMap() {
                     ))}
 
                     {/* ── Military Bases ── */}
-                    {layers.militaryBases && MILITARY_BASES.map(base => (
+                    {layers.militaryBases && allBases.map(base => (
                         <Marker key={base.id} position={[base.lat, base.lon]} icon={getBaseIcon(base)}>
                             <Popup><BasePopup base={base} /></Popup>
                             <MapTooltip>{base.name}</MapTooltip>
@@ -616,6 +662,23 @@ export default function ConflictMap() {
                         </Marker>
                     ))}
 
+                    {/* ── World Ports ── */}
+                    {layers.ports && PORTS.map(port => (
+                        <Marker key={`port_${port.id}`} position={[port.lat, port.lon]} icon={getPortIcon(port)}>
+                            <Popup>
+                                <GenericPopup icon={port.type === 'oil' ? '🛢️' : port.type === 'lng' ? '⛽' : port.type === 'naval' ? '⚓' : '🚢'}
+                                    title={port.name}
+                                    badges={[
+                                        { text: port.type.toUpperCase(), color: port.type === 'oil' ? 'red' : port.type === 'naval' ? 'purple' : 'blue' },
+                                        { text: port.country, color: 'gray' },
+                                        ...(port.rank ? [{ text: `#${port.rank} World`, color: 'gold' }] : []),
+                                    ]}
+                                    desc={port.note} />
+                            </Popup>
+                            <MapTooltip>🚢 {port.name}{port.rank ? ` (#${port.rank})` : ''}</MapTooltip>
+                        </Marker>
+                    ))}
+
                     {/* ── Flight Routes ── */}
                     {layers.flightRoutes && MILITARY_FLIGHT_ROUTES.map(route => (
                         <Polyline key={route.id} positions={route.coords}
@@ -662,6 +725,54 @@ export default function ConflictMap() {
                             <MapTooltip>🌋 {vol.name}</MapTooltip>
                         </Marker>
                     ))}
+
+                    {/* ── Earthquakes (USGS) ── */}
+                    {layers.earthquakes && earthquakes.map(eq => (
+                        <CircleMarker key={eq.id}
+                            center={[eq.lat, eq.lon]}
+                            radius={Math.max(eq.magnitude * 2.5, 4)}
+                            pathOptions={{
+                                color: eq.color, fillColor: eq.color,
+                                fillOpacity: 0.5, weight: 1.5
+                            }}>
+                            <Popup>
+                                <GenericPopup icon="🌍" title={eq.place}
+                                    badges={[
+                                        { text: `M${eq.magnitude}`, color: eq.level === 'major' || eq.level === 'strong' ? 'red' : 'gold' },
+                                        { text: eq.label, color: eq.level === 'major' ? 'red' : eq.level === 'strong' ? 'red' : 'gold' },
+                                        { text: `${eq.depth}km deep`, color: 'blue' },
+                                        ...(eq.tsunami ? [{ text: '🌊 TSUNAMI', color: 'red' }] : []),
+                                    ]}
+                                    desc={eq.felt ? `Felt by ${eq.felt} people` : undefined}
+                                    footer={eq.time ? new Date(eq.time).toLocaleString() : ''} />
+                            </Popup>
+                            <MapTooltip>🌍 M{eq.magnitude} — {eq.place}</MapTooltip>
+                        </CircleMarker>
+                    ))}
+
+                    {/* ── Wildfires (NASA FIRMS) ── */}
+                    {layers.wildfires && wildfires.map(fire => (
+                        <CircleMarker key={fire.id}
+                            center={[fire.lat, fire.lon]}
+                            radius={fire.level === 'extreme' ? 10 : fire.level === 'high' ? 7 : 5}
+                            pathOptions={{
+                                color: fire.color, fillColor: fire.color,
+                                fillOpacity: 0.6, weight: 1
+                            }}>
+                            <Popup>
+                                <GenericPopup icon="🔥" title={`Fire Hotspot — ${fire.region}`}
+                                    badges={[
+                                        { text: fire.label, color: fire.level === 'extreme' ? 'red' : fire.level === 'high' ? 'red' : 'gold' },
+                                        { text: fire.country, color: 'gray' },
+                                        { text: `FRP: ${fire.frp} MW`, color: 'purple' },
+                                        { text: fire.satellite, color: 'blue' },
+                                    ]}
+                                    desc={`Brightness: ${fire.brightness}K. Confidence: ${fire.confidence}%`} />
+                            </Popup>
+                            <MapTooltip>🔥 {fire.region} — {fire.label} ({fire.country})</MapTooltip>
+                        </CircleMarker>
+                    ))}
+
                 </MapContainer>
             </div>
 
@@ -669,12 +780,12 @@ export default function ConflictMap() {
             <div className="map-stats">
                 <div className="map-stat-item"><span className="map-stat-item__value" style={{ color: '#ef4444' }}>{RECENT_STRIKES.length}</span><span className="map-stat-item__label">Strikes</span></div>
                 <div className="map-stat-item"><span className="map-stat-item__value" style={{ color: '#f97316' }}>{FRONTLINES.length}</span><span className="map-stat-item__label">Frontlines</span></div>
-                <div className="map-stat-item"><span className="map-stat-item__value" style={{ color: '#3b82f6' }}>{AIR_DEFENSE_SYSTEMS.length}</span><span className="map-stat-item__label">Air Defense</span></div>
-                <div className="map-stat-item"><span className="map-stat-item__value" style={{ color: '#ef4444' }}>{CONFLICT_ZONES.length}</span><span className="map-stat-item__label">Conflicts</span></div>
-                <div className="map-stat-item"><span className="map-stat-item__value" style={{ color: '#06b6d4' }}>{MILITARY_BASES.length}</span><span className="map-stat-item__label">Bases</span></div>
-                <div className="map-stat-item"><span className="map-stat-item__value" style={{ color: '#f59e0b' }}>{NUCLEAR_FACILITIES.length}</span><span className="map-stat-item__label">Nuclear</span></div>
-                <div className="map-stat-item"><span className="map-stat-item__value" style={{ color: '#a855f7' }}>{DRONE_ZONES.length}</span><span className="map-stat-item__label">Drone Zones</span></div>
-                <div className="map-stat-item"><span className="map-stat-item__value" style={{ color: '#10b981' }}>{REFUGEE_FLOWS.reduce((t, f) => t + f.destinations.length, 0)}</span><span className="map-stat-item__label">Displacements</span></div>
+                <div className="map-stat-item"><span className="map-stat-item__value" style={{ color: '#3b82f6' }}>{allBases.length}</span><span className="map-stat-item__label">Bases</span></div>
+                <div className="map-stat-item"><span className="map-stat-item__value" style={{ color: '#8b5cf6' }}>{PORTS.length}</span><span className="map-stat-item__label">Ports</span></div>
+                <div className="map-stat-item"><span className="map-stat-item__value" style={{ color: '#f59e0b' }}>{earthquakes.length}</span><span className="map-stat-item__label">Quakes</span></div>
+                <div className="map-stat-item"><span className="map-stat-item__value" style={{ color: '#ef4444' }}>{wildfires.length}</span><span className="map-stat-item__label">Fires</span></div>
+                <div className="map-stat-item"><span className="map-stat-item__value" style={{ color: '#06b6d4' }}>{NUCLEAR_FACILITIES.length}</span><span className="map-stat-item__label">Nuclear</span></div>
+                <div className="map-stat-item"><span className="map-stat-item__value" style={{ color: '#a855f7' }}>{DRONE_ZONES.length}</span><span className="map-stat-item__label">Drones</span></div>
             </div>
         </div>
     );

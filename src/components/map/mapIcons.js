@@ -57,6 +57,9 @@ const SVG = {
 
   // ── Flight route arrow ──
   flight_arrow: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>`,
+
+  // ── Port/Harbor ──
+  port: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 21c-1.39 0-2.78-.47-4-1.32-2.44 1.71-5.56 1.71-8 0C6.78 20.53 5.39 21 4 21H2v2h2c1.38 0 2.74-.35 4-.99 2.52 1.29 5.48 1.29 8 0 1.26.65 2.62.99 4 .99h2v-2h-2z"/><path d="M11 5V1h2v4h3l-4 5-4-5h3zm1 6c-2.67 0-8 1.34-8 4v3h16v-3c0-2.66-5.33-4-8-4z"/></svg>`,
 };
 
 // ═══════════════════════════════════════════════════════════════════
@@ -144,4 +147,30 @@ export function getWeaponIcon(wp) {
 
 export function getCyberIcon() {
   return createIcon(WAR_SVG.cyber, '#a855f7', 22, 'xr-cyber');
+}
+
+// ── Port icon ──
+const PORT_COLORS = {
+  container: '#3b82f6', oil: '#1f2937', lng: '#06b6d4',
+  naval: '#6366f1', mixed: '#8b5cf6', bulk: '#f59e0b',
+};
+
+export function getPortIcon(port) {
+  return createIcon(SVG.port, PORT_COLORS[port.type] || '#6b7280', 22, `xr-port xr-port--${port.type}`);
+}
+
+// ── Earthquake icon ──
+const QUAKE_SVG = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/><path d="M12.5 7H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>`;
+
+export function getEarthquakeIcon(eq) {
+  const size = eq.magnitude >= 6 ? 30 : eq.magnitude >= 5 ? 24 : eq.magnitude >= 4 ? 20 : 16;
+  return createIcon(QUAKE_SVG, eq.color || '#f59e0b', size, `xr-quake xr-quake--${eq.level}`);
+}
+
+// ── Wildfire icon ──
+const FIRE_SVG = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M13.5.67s.74 2.65.74 4.8c0 2.06-1.35 3.73-3.41 3.73-2.07 0-3.63-1.67-3.63-3.73l.03-.36C5.21 7.51 4 10.62 4 14c0 4.42 3.58 8 8 8s8-3.58 8-8C20 8.61 17.41 3.8 13.5.67zM11.71 19c-1.78 0-3.22-1.4-3.22-3.14 0-1.62 1.05-2.76 2.81-3.12 1.77-.36 3.6-1.21 4.62-2.58.39 1.29.59 2.65.59 4.04 0 2.65-2.15 4.8-4.8 4.8z"/></svg>`;
+
+export function getWildfireIcon(fire) {
+  const size = fire.level === 'extreme' ? 28 : fire.level === 'high' ? 22 : 18;
+  return createIcon(FIRE_SVG, fire.color || '#f97316', size, `xr-fire xr-fire--${fire.level}`);
 }

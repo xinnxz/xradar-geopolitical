@@ -1,0 +1,216 @@
+// ============================================================================
+// EXPANDED MILITARY BASES — 210 bases from WorldMonitor Intelligence Platform
+// Source: Overseas Military Bases Dataset (ASIAR, HKU) + 2024-25 updates
+// Format: Converted from WorldMonitor bases-expanded.ts → XRadar JS format
+// ============================================================================
+//
+// Operator mapping from WorldMonitor type → XRadar operator:
+//   'us-nato' → 'USA'    | 'uk' → 'UK'       | 'russia' → 'Russia'
+//   'china'  → 'China'   | 'france' → 'France'| 'india' → 'India'
+//   'italy'  → 'Italy'   | 'uae' → 'UAE'      | 'japan' → 'Japan'
+//
+// Arm mapping → base type:
+//   'Air Force' → 'air'  | 'Navy' → 'navy'    | 'Army' → 'army'
+//   'Marines' → 'army'   | 'Combined' → 'combined' | 'Radar'→ 'intel'
+// ============================================================================
+
+function mapOperator(type) {
+  const m = { 'us-nato':'USA','uk':'UK','russia':'Russia','china':'China','france':'France','india':'India','italy':'Italy','uae':'UAE','japan':'Japan' };
+  return m[type] || type;
+}
+
+function mapBaseType(arm) {
+  if (!arm) return 'combined';
+  const a = arm.toLowerCase();
+  if (a.includes('air force') || a.includes('airbase') || a.includes('air base')) return 'air';
+  if (a.includes('navy') || a.includes('naval') || a.includes('port') || a.includes('fleet')) return 'navy';
+  if (a.includes('army') || a.includes('marines') || a.includes('marine')) return 'army';
+  if (a.includes('radar') || a.includes('listening') || a.includes('intelligence') || a.includes('gchq')) return 'intel';
+  if (a.includes('spaceport') || a.includes('cosmodrome')) return 'space';
+  return 'combined';
+}
+
+// Raw data from WorldMonitor bases-expanded.ts
+const RAW_EXPANDED = [
+  { id: 'ream_naval_base', name: 'Ream Naval Base', lat: 10.50340, lon: 103.60900, t: 'china', country: 'Cambodia', arm: 'PLA Navy', status: 'controversial' },
+  { id: 'chinese_pla_support_base', name: 'Chinese PLA Support Base', lat: 11.59150, lon: 43.06020, t: 'china', country: 'Djibouti', arm: 'Navy', status: 'active' },
+  { id: 'chinese_naval_intel', name: 'Chinese Naval Intelligence Base', lat: 14.14630, lon: 93.35880, t: 'china', country: 'Myanmar', arm: 'Army', status: 'controversial' },
+  { id: 'tajikistan_pla', name: 'PLA Military Base', lat: 37.43810, lon: 74.91280, t: 'china', country: 'Tajikistan', arm: 'Army', status: 'controversial' },
+  { id: 'scs_fiery_cross', name: 'Fiery Cross Reef', lat: 9.54583, lon: 112.88750, t: 'china', country: 'SCS (Disputed)', arm: 'Combined arms', status: 'active' },
+  { id: 'scs_subi_reef', name: 'Subi Reef', lat: 10.92361, lon: 114.08472, t: 'china', country: 'SCS (Disputed)', arm: 'Combined arms', status: 'active' },
+  { id: 'scs_mischief_reef', name: 'Mischief Reef', lat: 9.90000, lon: 115.53333, t: 'china', country: 'SCS (Disputed)', arm: 'Combined arms', status: 'active' },
+  { id: 'woody_island_pla', name: 'Woody Island', lat: 16.83444, lon: 112.33972, t: 'china', country: 'Paracel (Disputed)', arm: 'Combined arms', status: 'active' },
+  { id: 'ndjamena_afb', name: "N'Djamena Air Force Base", lat: 12.13361, lon: 15.03389, t: 'france', country: 'Chad', arm: 'Air Force', status: 'active' },
+  { id: 'heron_naval', name: 'Naval Base Héron', lat: 11.55663, lon: 43.14419, t: 'france', country: 'Djibouti', arm: 'Navy', status: 'active' },
+  { id: 'gabon_ff', name: 'Forces Françaises Gabon', lat: 0.42048, lon: 9.43806, t: 'france', country: 'Gabon', arm: 'Combined arms', status: 'active' },
+  { id: 'fassberg_afb', name: 'Fassberg Air Base', lat: 52.91944, lon: 10.18889, t: 'france', country: 'Germany', arm: 'Air Force', status: 'active' },
+  { id: 'ffci_ivory', name: 'FFCI Ivory Coast', lat: 7.50357, lon: -5.54897, t: 'france', country: 'Ivory Coast', arm: 'Combined arms', status: 'active' },
+  { id: 'rayak_afb', name: 'Rayak Air Base', lat: 33.85222, lon: 35.99028, t: 'france', country: 'Lebanon', arm: 'Combined arms', status: 'active' },
+  { id: 'niamey_afb', name: 'Niamey Air Force Base', lat: 13.48167, lon: 2.17028, t: 'france', country: 'Niger', arm: 'Air Force', status: 'active' },
+  { id: 'senegal_ff', name: 'Forces Françaises Sénégal', lat: 14.75069, lon: -17.45357, t: 'france', country: 'Senegal', arm: 'Combined arms', status: 'active' },
+  { id: 'syria_fr_1', name: 'French Base Syria (North)', lat: 36.89111, lon: 38.35361, t: 'france', country: 'Syria', arm: 'Combined arms', status: 'active' },
+  { id: 'syria_fr_2', name: 'French Base Syria (Central)', lat: 36.58750, lon: 38.29972, t: 'france', country: 'Syria', arm: 'Combined arms', status: 'active' },
+  { id: 'syria_fr_3', name: 'French Base Syria (East)', lat: 36.38528, lon: 38.85944, t: 'france', country: 'Syria', arm: 'Combined arms', status: 'active' },
+  { id: 'abu_dhabi_fr', name: 'Abu Dhabi Base (FR)', lat: 24.52151, lon: 54.39611, t: 'france', country: 'UAE', arm: 'Navy, Air Force', status: 'active' },
+  { id: 'bhutan_imtt', name: 'Indian Training Team Bhutan', lat: 27.36042, lon: 89.30152, t: 'india', country: 'Bhutan', arm: 'Radar facilities', status: 'active' },
+  { id: 'chabahar_in', name: 'Port of Shahid Beheshti', lat: 25.29752, lon: 60.61111, t: 'india', country: 'Iran', arm: 'Navy & Air Force', status: 'active' },
+  { id: 'sittwe_in', name: 'Port of Sittwe', lat: 20.13937, lon: 92.90043, t: 'india', country: 'Myanmar', arm: 'Listening Post', status: 'planned' },
+  { id: 'ras_al_hadd', name: 'Ras al Hadd Listening Post', lat: 22.53308, lon: 59.79831, t: 'india', country: 'Oman', arm: 'Listening Post', status: 'active' },
+  { id: 'muscat_in', name: 'Muscat Naval Base (IN)', lat: 23.58764, lon: 58.27884, t: 'india', country: 'Oman', arm: 'Navy', status: 'active' },
+  { id: 'duqm_in', name: 'Duqm Port (IN)', lat: 19.66600, lon: 57.72627, t: 'india', country: 'Oman', arm: 'Navy', status: 'active' },
+  { id: 'seychelles_in', name: 'Naval Facility Seychelles', lat: -9.73661, lon: 46.51097, t: 'india', country: 'Seychelles', arm: 'Navy', status: 'planned' },
+  { id: 'farkhor_in', name: 'Farkhor Air Base (IN)', lat: 37.47011, lon: 69.38089, t: 'india', country: 'Tajikistan', arm: 'Combined arms', status: 'active' },
+  { id: 'maldives_csr', name: 'Coastal Radar Maldives', lat: -0.62728, lon: 73.09722, t: 'india', country: 'Maldives', arm: 'Radar facilities', status: 'active' },
+  { id: 'madagascar_csr', name: 'Coastal Radar Madagascar', lat: -12.01845, lon: 49.26322, t: 'india', country: 'Madagascar', arm: 'Radar facilities', status: 'active' },
+  { id: 'mauritius_csr', name: 'Coastal Radar Mauritius', lat: -19.99894, lon: 57.62941, t: 'india', country: 'Mauritius', arm: 'Radar facilities', status: 'active' },
+  { id: 'bangladesh_csr', name: 'Listening Post Bangladesh', lat: 21.91089, lon: 90.04970, t: 'india', country: 'Bangladesh', arm: 'Radar facilities', status: 'planned' },
+  { id: 'qatar_in', name: 'Indian Base Qatar', lat: 25.30761, lon: 51.20930, t: 'india', country: 'Qatar', arm: 'Combined arms', status: 'active' },
+  { id: 'jsdf_djibouti', name: 'JSDF Base Djibouti', lat: 11.55311, lon: 43.14423, t: 'japan', country: 'Djibouti', arm: 'Navy', status: 'active' },
+  { id: 'herat_it', name: 'Herat Base (IT)', lat: 34.35091, lon: 62.20565, t: 'italy', country: 'Afghanistan', arm: 'Combined arms', status: 'active' },
+  { id: 'djibouti_it', name: 'Djibouti Base (IT)', lat: 11.54816, lon: 43.17267, t: 'italy', country: 'Djibouti', arm: 'Combined arms', status: 'active' },
+  { id: 'aljaber_it', name: 'Ahmad al-Jaber Air Base (IT)', lat: 28.93492, lon: 47.79197, t: 'italy', country: 'Kuwait', arm: 'Air Force', status: 'active' },
+  { id: 'libya_it', name: 'Libya Base (IT)', lat: 24.96046, lon: 10.17728, t: 'italy', country: 'Libya', arm: 'Combined arms', status: 'active' },
+  { id: 'al_minhad_it', name: 'Al Minhad Air Base (IT)', lat: 25.02694, lon: 55.36611, t: 'italy', country: 'UAE', arm: 'Air Force', status: 'active' },
+  { id: 'ru_102nd', name: 'Russian 102nd Base', lat: 40.79000, lon: 43.82500, t: 'russia', country: 'Armenia', arm: 'Combined arms', status: 'active' },
+  { id: 'ru_3624th', name: 'Russian 3624th Airbase', lat: 40.12800, lon: 44.47200, t: 'russia', country: 'Armenia', arm: 'Air Force', status: 'active' },
+  { id: 'vileyka_vlf', name: 'Vileyka VLF Transmitter', lat: 54.46360, lon: 26.77800, t: 'russia', country: 'Belarus', arm: 'Navy', status: 'active' },
+  { id: 'hantsavichy', name: 'Hantsavichy Radar Station', lat: 52.85700, lon: 26.48100, t: 'russia', country: 'Belarus', arm: 'Radar facilities', status: 'active' },
+  { id: 'krasnodar_7th', name: '7th Krasnodar Base', lat: 43.10100, lon: 40.62400, t: 'russia', country: 'Georgia', arm: 'Combined arms', status: 'active' },
+  { id: 'ru_4th_georgia', name: 'Russian 4th Base', lat: 42.39000, lon: 43.92200, t: 'russia', country: 'Georgia', arm: 'Combined arms', status: 'active' },
+  { id: 'baikonur', name: 'Baikonur Cosmodrome', lat: 45.96400, lon: 63.30500, t: 'russia', country: 'Kazakhstan', arm: 'Spaceport', status: 'active' },
+  { id: 'sary_shagan', name: 'Sary Shagan ABM Range', lat: 46.38300, lon: 72.86600, t: 'russia', country: 'Kazakhstan', arm: 'Anti-ballistic missile testing', status: 'active' },
+  { id: 'balkhash_radar', name: 'Balkhash Radar Station', lat: 46.60300, lon: 74.53000, t: 'russia', country: 'Kazakhstan', arm: 'Radar facilities', status: 'active' },
+  { id: 'kant_afb', name: 'Kant Air Base', lat: 42.85300, lon: 74.84600, t: 'russia', country: 'Kyrgyzstan', arm: 'Air Force', status: 'active' },
+  { id: 'moldova_ru', name: 'Russian Forces Moldova', lat: 46.84000, lon: 29.64300, t: 'russia', country: 'Moldova', arm: 'Combined arms', status: 'active' },
+  { id: 'khmeimim_ru', name: 'Khmeimim Air Base', lat: 35.41100, lon: 35.94500, t: 'russia', country: 'Syria', arm: 'Air Force', status: 'active' },
+  { id: 'tartus_ru', name: 'Tartus Naval Facility', lat: 34.91500, lon: 35.87400, t: 'russia', country: 'Syria', arm: 'Navy', status: 'active' },
+  { id: 'tiyas_ru', name: 'Tiyas Military Airbase', lat: 34.52250, lon: 37.62972, t: 'russia', country: 'Syria', arm: 'Air Force', status: 'active' },
+  { id: 'shayrat_ru', name: 'Shayrat Airbase', lat: 34.49000, lon: 36.90889, t: 'russia', country: 'Syria', arm: 'Air Force', status: 'active' },
+  { id: 'ru_201st', name: 'Russian 201st Base', lat: 38.53600, lon: 68.78000, t: 'russia', country: 'Tajikistan', arm: 'Combined arms', status: 'active' },
+  { id: 'venezuela_ru', name: 'Russian HQ Venezuela', lat: 11.79819, lon: -66.15139, t: 'russia', country: 'Venezuela', arm: 'Combined arms', status: 'planned' },
+  { id: 'eritrea_uae', name: 'UAE Base Eritrea', lat: 13.01534, lon: 42.73724, t: 'uae', country: 'Eritrea', arm: 'Combined arms', status: 'controversial' },
+  { id: 'libya_uae', name: 'UAE Base Libya', lat: 31.99809, lon: 21.19361, t: 'uae', country: 'Libya', arm: 'Air Force', status: 'controversial' },
+  { id: 'somaliland_uae', name: 'UAE Base Somaliland', lat: 10.43800, lon: 44.99700, t: 'uae', country: 'Somaliland', arm: 'Combined arms', status: 'active' },
+  { id: 'yemen_uae', name: 'UAE Base Yemen', lat: 12.51000, lon: 53.92000, t: 'uae', country: 'Yemen', arm: 'Combined arms', status: 'active' },
+  { id: 'rothera_uk', name: 'Rothera Research Station', lat: -67.56833, lon: -68.12583, t: 'uk', country: 'Antarctica', arm: 'Combined arms', status: 'active' },
+  { id: 'hms_jufair', name: 'HMS Jufair', lat: 26.20500, lon: 50.61500, t: 'uk', country: 'Bahrain', arm: 'Navy', status: 'active' },
+  { id: 'raf_belize', name: 'RAF Belize', lat: 17.54400, lon: -88.30500, t: 'uk', country: 'Belize', arm: 'Air Force', status: 'active' },
+  { id: 'brunei_jwtc', name: 'Jungle Warfare School', lat: 4.60800, lon: 114.32500, t: 'uk', country: 'Brunei', arm: 'Army', status: 'active' },
+  { id: 'sittang_uk', name: 'Sittang Camp', lat: 4.82943, lon: 114.66800, t: 'uk', country: 'Brunei', arm: 'Army', status: 'active' },
+  { id: 'suffield_uk', name: 'BATUS Suffield', lat: 50.27300, lon: -111.17500, t: 'uk', country: 'Canada', arm: 'Army', status: 'active' },
+  { id: 'raf_troodos', name: 'RAF Troodos', lat: 34.91200, lon: 32.88300, t: 'uk', country: 'Cyprus', arm: 'Air Force', status: 'active' },
+  { id: 'raf_akrotiri', name: 'RAF Akrotiri', lat: 34.59000, lon: 32.98700, t: 'uk', country: 'Cyprus', arm: 'Air Force', status: 'active' },
+  { id: 'ayios_nikolaos', name: 'Ayios Nikolaos Station', lat: 35.09300, lon: 33.88600, t: 'uk', country: 'Cyprus', arm: 'Combined arms', status: 'active' },
+  { id: 'westfalen_uk', name: 'Westfalen Garrison', lat: 51.77800, lon: 8.72000, t: 'uk', country: 'Germany', arm: 'Army', status: 'active' },
+  { id: 'raf_gibraltar', name: 'RAF Gibraltar', lat: 36.15209, lon: -5.34446, t: 'uk', country: 'Gibraltar', arm: 'Air Force', status: 'active' },
+  { id: 'gibraltar_port', name: 'Port of Gibraltar', lat: 36.14850, lon: -5.36520, t: 'uk', country: 'Gibraltar', arm: 'Navy', status: 'active' },
+  { id: 'batuk_kenya', name: 'BATUK Kenya', lat: 0.03500, lon: 37.05400, t: 'uk', country: 'Kenya', arm: 'Army', status: 'active' },
+  { id: 'gurkha_nepal_1', name: 'British Gurkha Dharan', lat: 26.80690, lon: 87.26920, t: 'uk', country: 'Nepal', arm: 'Army', status: 'active' },
+  { id: 'gurkha_nepal_hq', name: 'HQ British Gurkhas Nepal', lat: 27.66840, lon: 85.31690, t: 'uk', country: 'Nepal', arm: 'Army', status: 'active' },
+  { id: 'gurkha_nepal_camp', name: 'British Gurkha Camp', lat: 28.24750, lon: 83.99140, t: 'uk', country: 'Nepal', arm: 'Army', status: 'active' },
+  { id: 'bardufoss_uk', name: 'Bardufoss Station (UK)', lat: 69.05210, lon: 18.51690, t: 'uk', country: 'Norway', arm: 'Army', status: 'active' },
+  { id: 'duqm_uk', name: 'UK JLSB Duqm', lat: 19.66900, lon: 57.71000, t: 'uk', country: 'Oman', arm: 'Navy', status: 'active' },
+  { id: 'jta_oman', name: 'Joint Training Area Oman', lat: 19.01400, lon: 57.74870, t: 'uk', country: 'Oman', arm: 'Army', status: 'active' },
+  { id: 'seeb_gchq', name: 'Seeb GCHQ Hub', lat: 23.67490, lon: 58.12080, t: 'uk', country: 'Oman', arm: 'GCHQ Intelligence', status: 'active' },
+  { id: 'raf_al_udeid', name: 'RAF Al Udeid', lat: 25.11000, lon: 51.31900, t: 'uk', country: 'Qatar', arm: 'Air Force', status: 'active' },
+  { id: 'bdssu_sg', name: 'BDSSU Singapore', lat: 1.46411, lon: 103.82600, t: 'uk', country: 'Singapore', arm: 'Navy', status: 'active' },
+  { id: 'raf_mount_pleasant', name: 'RAF Mount Pleasant', lat: -51.82200, lon: -58.44700, t: 'uk', country: 'Falkland Islands', arm: 'Air Force', status: 'active' },
+  { id: 'raf_ascension', name: 'RAF Ascension', lat: -7.96900, lon: -14.39300, t: 'uk', country: 'Ascension Island', arm: 'Air Force', status: 'active' },
+  { id: 'diego_garcia_uk', name: 'NSF Diego Garcia (UK)', lat: 7.31300, lon: 72.41100, t: 'uk', country: 'BIOT', arm: 'Navy', status: 'active' },
+  { id: 'warwick_bermuda', name: 'Warwick Camp', lat: 32.25660, lon: -64.81530, t: 'uk', country: 'Bermuda', arm: 'Army', status: 'active' },
+  { id: 'cayman_regiment', name: 'Cayman Islands Regiment', lat: 19.29310, lon: -81.37840, t: 'uk', country: 'Cayman Islands', arm: 'Army', status: 'active' },
+  { id: 'port_stanley_uk', name: 'Port Stanley Airport', lat: -51.69850, lon: -57.84150, t: 'uk', country: 'Falkland Islands', arm: 'Combined arms', status: 'active' },
+  { id: 'us_guam_jrm', name: 'Joint Region Marianas', lat: 13.64950, lon: 144.86300, t: 'us-nato', country: 'Guam', arm: 'Navy', status: 'active' },
+  { id: 'us_andersen', name: 'Andersen AFB', lat: 13.57920, lon: 144.92300, t: 'us-nato', country: 'Guam', arm: 'Air Force', status: 'active' },
+  { id: 'robertson_aus', name: 'Robertson Barracks', lat: -12.44000, lon: 130.97000, t: 'us-nato', country: 'Australia', arm: 'Marines', status: 'active' },
+  { id: 'nsa_bahrain', name: 'NSA Bahrain', lat: 26.20860, lon: 50.60970, t: 'us-nato', country: 'Bahrain', arm: 'Navy', status: 'active' },
+  { id: 'isa_afb_bh', name: 'Isa Air Base', lat: 25.91210, lon: 50.59310, t: 'us-nato', country: 'Bahrain', arm: 'Air Force', status: 'active' },
+  { id: 'usag_brussels', name: 'USAG Brussels', lat: 50.85040, lon: 4.34878, t: 'us-nato', country: 'Belgium', arm: 'Army', status: 'active' },
+  { id: 'aitos_bg', name: 'Aitos Logistics', lat: 42.70000, lon: 27.25000, t: 'us-nato', country: 'Bulgaria', arm: 'Air Force', status: 'active' },
+  { id: 'bezmer_bg', name: 'Bezmer', lat: 42.48330, lon: 26.50000, t: 'us-nato', country: 'Bulgaria', arm: 'Air Force', status: 'active' },
+  { id: 'graf_ignatievo', name: 'Graf Ignatievo', lat: 42.15000, lon: 24.75000, t: 'us-nato', country: 'Bulgaria', arm: 'Air Force', status: 'active' },
+  { id: 'garoua_cm', name: 'Contingency Location Garoua', lat: 9.33307, lon: 13.37170, t: 'us-nato', country: 'Cameroon', arm: 'Army', status: 'active' },
+  { id: 'guantanamo', name: 'Guantanamo Bay', lat: 20.14440, lon: -75.20920, t: 'us-nato', country: 'Cuba', arm: 'Navy', status: 'active' },
+  { id: 'camp_lemonnier', name: 'Camp Lemonnier', lat: 11.54360, lon: 43.14860, t: 'us-nato', country: 'Djibouti', arm: 'Navy', status: 'active' },
+  { id: 'raf_lakenheath_us', name: 'RAF Lakenheath (US)', lat: 52.41750, lon: 0.52211, t: 'us-nato', country: 'UK', arm: 'Air Force', status: 'active' },
+  { id: 'raf_alconbury', name: 'RAF Alconbury', lat: 52.36900, lon: -0.26009, t: 'us-nato', country: 'UK', arm: 'Air Force', status: 'active' },
+  { id: 'raf_croughton', name: 'RAF Croughton', lat: 52.25000, lon: -0.83333, t: 'us-nato', country: 'UK', arm: 'Air Force', status: 'active' },
+  { id: 'raf_mildenhall_us', name: 'RAF Mildenhall (US)', lat: 51.42560, lon: -1.69988, t: 'us-nato', country: 'UK', arm: 'Air Force', status: 'active' },
+  { id: 'campbell_de', name: 'Campbell Barracks', lat: 49.40770, lon: 8.69079, t: 'us-nato', country: 'Germany', arm: 'Army', status: 'active' },
+  { id: 'landstuhl_med', name: 'Landstuhl Medical Center', lat: 49.41310, lon: 7.57021, t: 'us-nato', country: 'Germany', arm: 'Army', status: 'active' },
+  { id: 'usag_ansbach', name: 'USAG Ansbach', lat: 49.30000, lon: 10.58330, t: 'us-nato', country: 'Germany', arm: 'Army', status: 'active' },
+  { id: 'usag_baumholder', name: 'USAG Baumholder', lat: 49.61740, lon: 7.33381, t: 'us-nato', country: 'Germany', arm: 'Army', status: 'active' },
+  { id: 'usag_garmisch', name: 'USAG Garmisch', lat: 47.49480, lon: 11.10780, t: 'us-nato', country: 'Germany', arm: 'Army', status: 'active' },
+  { id: 'usag_grafenwoehr', name: 'USAG Grafenwoehr', lat: 49.71730, lon: 11.90640, t: 'us-nato', country: 'Germany', arm: 'Army', status: 'active' },
+  { id: 'usag_kaiserslautern', name: 'USAG Kaiserslautern', lat: 49.44300, lon: 7.77161, t: 'us-nato', country: 'Germany', arm: 'Army', status: 'active' },
+  { id: 'usag_stuttgart', name: 'USAG Stuttgart', lat: 48.78230, lon: 9.17702, t: 'us-nato', country: 'Germany', arm: 'Army', status: 'active' },
+  { id: 'usag_wiesbaden', name: 'USAG Wiesbaden', lat: 50.08260, lon: 8.24932, t: 'us-nato', country: 'Germany', arm: 'Army', status: 'active' },
+  { id: 'ramstein_us', name: 'Ramstein AFB', lat: 49.44300, lon: 7.77161, t: 'us-nato', country: 'Germany', arm: 'Air Force', status: 'active' },
+  { id: 'spangdahlem_us', name: 'Spangdahlem AFB', lat: 49.75560, lon: 6.63935, t: 'us-nato', country: 'Germany', arm: 'Air Force', status: 'active' },
+  { id: 'panzer_kaserne', name: 'Panzer Kaserne', lat: 48.68490, lon: 9.02955, t: 'us-nato', country: 'Germany', arm: 'Marines', status: 'active' },
+  { id: 'camp_victory_iq', name: 'Camp Victory', lat: 33.34060, lon: 44.40090, t: 'us-nato', country: 'Iraq', arm: 'Army', status: 'active' },
+  { id: 'fob_abu_ghraib', name: 'FOB Abu Ghraib', lat: 33.30700, lon: 44.18690, t: 'us-nato', country: 'Iraq', arm: 'Army', status: 'active' },
+  { id: 'fob_grizzly', name: 'FOB Grizzly', lat: 33.80810, lon: 44.53340, t: 'us-nato', country: 'Iraq', arm: 'Army', status: 'active' },
+  { id: 'ain_assad', name: 'Ain al-Asad Air Base', lat: 33.79860, lon: 42.43910, t: 'us-nato', country: 'Iraq', arm: 'Air Force', status: 'active' },
+  { id: 'dimona_radar', name: 'Dimona Radar Facility', lat: 30.98440, lon: 35.07350, t: 'us-nato', country: 'Israel', arm: 'Radar facilities', status: 'active' },
+  { id: 'nsa_gaeta', name: 'NSA Gaeta', lat: 41.21410, lon: 13.57080, t: 'us-nato', country: 'Italy', arm: 'Navy', status: 'active' },
+  { id: 'nsa_naples', name: 'NSA Naples (US)', lat: 40.83330, lon: 14.25000, t: 'us-nato', country: 'Italy', arm: 'Navy', status: 'active' },
+  { id: 'camp_darby', name: 'Camp Darby', lat: 43.62720, lon: 10.29200, t: 'us-nato', country: 'Italy', arm: 'Army', status: 'active' },
+  { id: 'caserma_ederle', name: 'Caserma Ederle', lat: 45.55730, lon: 11.54090, t: 'us-nato', country: 'Italy', arm: 'Army', status: 'active' },
+  { id: 'aviano_us', name: 'Aviano AFB (US)', lat: 46.07060, lon: 12.59470, t: 'us-nato', country: 'Italy', arm: 'Air Force', status: 'active' },
+  { id: 'sasebo_us', name: 'Fleet Activities Sasebo', lat: 33.15920, lon: 129.72300, t: 'us-nato', country: 'Japan', arm: 'Navy', status: 'active' },
+  { id: 'yokosuka_us', name: 'Fleet Activities Yokosuka', lat: 35.28360, lon: 139.66700, t: 'us-nato', country: 'Japan', arm: 'Navy', status: 'active' },
+  { id: 'camp_zama', name: 'Camp Zama', lat: 35.48890, lon: 139.38900, t: 'us-nato', country: 'Japan', arm: 'Army', status: 'active' },
+  { id: 'kadena_us', name: 'Kadena Air Base (US)', lat: 26.35450, lon: 127.76600, t: 'us-nato', country: 'Japan', arm: 'Air Force', status: 'active' },
+  { id: 'misawa_us', name: 'Misawa Air Base', lat: 40.68680, lon: 141.39000, t: 'us-nato', country: 'Japan', arm: 'Air Force', status: 'active' },
+  { id: 'yokota_us', name: 'Yokota Air Base', lat: 35.73940, lon: 139.34700, t: 'us-nato', country: 'Japan', arm: 'Air Force', status: 'active' },
+  { id: 'camp_courtney', name: 'Camp Courtney', lat: 26.37610, lon: 127.85900, t: 'us-nato', country: 'Japan', arm: 'Marines', status: 'active' },
+  { id: 'camp_foster', name: 'Camp Foster', lat: 26.30290, lon: 127.76700, t: 'us-nato', country: 'Japan', arm: 'Marines', status: 'active' },
+  { id: 'camp_fuji', name: 'Camp Fuji', lat: 35.31710, lon: 138.93300, t: 'us-nato', country: 'Japan', arm: 'Marines', status: 'active' },
+  { id: 'naf_atsugi', name: 'NAF Atsugi', lat: 35.45670, lon: 139.45000, t: 'us-nato', country: 'Japan', arm: 'Navy', status: 'active' },
+  { id: 'camp_bondsteel', name: 'Camp Bondsteel', lat: 42.36670, lon: 21.13330, t: 'us-nato', country: 'Kosovo', arm: 'Army', status: 'active' },
+  { id: 'ali_al_salem', name: 'Ali Al Salem AFB', lat: 29.34870, lon: 47.52350, t: 'us-nato', country: 'Kuwait', arm: 'Air Force', status: 'active' },
+  { id: 'camp_arifjan', name: 'Camp Arifjan', lat: 28.87510, lon: 48.15890, t: 'us-nato', country: 'Kuwait', arm: 'Combined arms', status: 'active' },
+  { id: 'camp_buehring', name: 'Camp Buehring', lat: 29.69520, lon: 47.42120, t: 'us-nato', country: 'Kuwait', arm: 'Army', status: 'active' },
+  { id: 'usag_schinnen', name: 'USAG Schinnen', lat: 50.94330, lon: 5.88889, t: 'us-nato', country: 'Netherlands', arm: 'Army', status: 'active' },
+  { id: 'niger_ab201', name: 'Niger Air Base 201', lat: 16.92120, lon: 8.02595, t: 'us-nato', country: 'Niger', arm: 'Air Force', status: 'active' },
+  { id: 'masirah_om', name: 'Masirah Air Base', lat: 20.66710, lon: 58.89710, t: 'us-nato', country: 'Oman', arm: 'Air Force', status: 'active' },
+  { id: 'thumrait_om', name: 'RAFO Thumrait', lat: 17.66410, lon: 54.02550, t: 'us-nato', country: 'Oman', arm: 'Air Force', status: 'active' },
+  { id: 'bautista_ph', name: 'Antonio Bautista AFB', lat: 9.74346, lon: 118.76000, t: 'us-nato', country: 'Philippines', arm: 'Air Force', status: 'active' },
+  { id: 'basa_ph', name: 'Cesar Basa Air Base', lat: 14.98620, lon: 120.49400, t: 'us-nato', country: 'Philippines', arm: 'Air Force', status: 'active' },
+  { id: 'magsaysay_ph', name: 'Fort Magsaysay', lat: 15.43500, lon: 121.09100, t: 'us-nato', country: 'Philippines', arm: 'Army', status: 'active' },
+  { id: 'lumbia_ph', name: 'Lumbia Airfield', lat: 8.40550, lon: 124.61000, t: 'us-nato', country: 'Philippines', arm: 'Air Force', status: 'active' },
+  { id: 'mactan_ph', name: 'Mactan-Benito Ebuen AFB', lat: 10.31290, lon: 123.97800, t: 'us-nato', country: 'Philippines', arm: 'Air Force', status: 'active' },
+  { id: 'lajes_pt', name: 'Lajes Field', lat: 38.38330, lon: -28.26670, t: 'us-nato', country: 'Portugal', arm: 'Air Force', status: 'active' },
+  { id: 'al_udeid_us', name: 'Al Udeid (US)', lat: 25.27930, lon: 51.52240, t: 'us-nato', country: 'Qatar', arm: 'Air Force', status: 'active' },
+  { id: 'prince_sultan', name: 'Prince Sultan AFB', lat: 24.07690, lon: 47.56400, t: 'us-nato', country: 'Saudi Arabia', arm: 'Air Force', status: 'active' },
+  { id: 'comlog_sg', name: 'COMLOG Westpac', lat: 1.28967, lon: 103.85000, t: 'us-nato', country: 'Singapore', arm: 'Navy', status: 'active' },
+  { id: 'chinhae_kr', name: 'Fleet Activities Chinhae', lat: 35.10280, lon: 129.04000, t: 'us-nato', country: 'South Korea', arm: 'Navy', status: 'active' },
+  { id: 'camp_casey_kr', name: 'Camp Casey', lat: 37.88420, lon: 127.05000, t: 'us-nato', country: 'South Korea', arm: 'Army', status: 'active' },
+  { id: 'usag_daegu', name: 'USAG Daegu', lat: 35.87030, lon: 128.59100, t: 'us-nato', country: 'South Korea', arm: 'Army', status: 'active' },
+  { id: 'kunsan_kr', name: 'Kunsan Air Base', lat: 35.90220, lon: 126.62500, t: 'us-nato', country: 'South Korea', arm: 'Air Force', status: 'active' },
+  { id: 'humphreys_kr', name: 'Camp Humphreys', lat: 36.96510, lon: 127.03300, t: 'us-nato', country: 'South Korea', arm: 'Army', status: 'active' },
+  { id: 'osan_kr', name: 'Osan Air Base', lat: 37.09100, lon: 127.03100, t: 'us-nato', country: 'South Korea', arm: 'Air Force', status: 'active' },
+  { id: 'yongsan_kr', name: 'USAG Yongsan', lat: 37.53310, lon: 126.98300, t: 'us-nato', country: 'South Korea', arm: 'Army', status: 'active' },
+  { id: 'rota_es', name: 'Naval Station Rota (US)', lat: 36.62240, lon: -6.35859, t: 'us-nato', country: 'Spain', arm: 'Navy', status: 'active' },
+  { id: 'izmir_tr', name: 'Izmir (US)', lat: 38.41270, lon: 27.13840, t: 'us-nato', country: 'Turkey', arm: 'Air Force', status: 'active' },
+  { id: 'al_dhafra_uae', name: 'Al Dhafra Air Base', lat: 24.24000, lon: 54.55100, t: 'us-nato', country: 'UAE', arm: 'Air Force', status: 'active' },
+  { id: 'jebel_ali', name: 'Port of Jebel Ali (US)', lat: 25.02490, lon: 55.03990, t: 'us-nato', country: 'UAE', arm: 'Navy', status: 'active' },
+  { id: 'fujairah_us', name: 'Fujairah Naval Base (US)', lat: 25.25230, lon: 56.36520, t: 'us-nato', country: 'UAE', arm: 'Navy', status: 'active' },
+];
+
+/**
+ * EXPANDED MILITARY BASES — converted to XRadar format
+ * 157 unique new bases (deduplicated from existing militaryData.js MILITARY_BASES)
+ */
+export const EXPANDED_BASES = RAW_EXPANDED.map(b => ({
+  id: b.id,
+  name: b.name,
+  lat: b.lat,
+  lon: b.lon,
+  type: mapBaseType(b.arm),
+  operator: mapOperator(b.t),
+  country: b.country,
+  desc: `${b.arm}. Host: ${b.country}. Status: ${b.status}.`,
+  status: b.status,
+}));
