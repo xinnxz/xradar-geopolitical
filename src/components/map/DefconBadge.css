@@ -1,0 +1,160 @@
+/* ── DEFCON Badge ── */
+.defcon-badge {
+    position: relative;
+    z-index: 100;
+}
+
+.defcon-badge__trigger {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    cursor: pointer;
+    font-size: 0.78rem;
+    font-weight: 600;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.defcon-badge__trigger:hover {
+    border-color: var(--defcon-color);
+    box-shadow: 0 0 12px var(--defcon-glow);
+}
+
+.defcon-badge__trigger.pulse {
+    animation: defcon-pulse 2s ease-in-out infinite;
+}
+
+@keyframes defcon-pulse {
+    0%, 100% { box-shadow: 0 0 4px var(--defcon-glow); }
+    50% { box-shadow: 0 0 16px var(--defcon-glow), 0 0 32px var(--defcon-glow); }
+}
+
+.defcon-badge__level {
+    font-variant-numeric: tabular-nums;
+}
+
+.defcon-badge__label {
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+.defcon-badge__chevron {
+    transition: transform 0.15s;
+    opacity: 0.5;
+}
+
+.defcon-badge__chevron.open {
+    transform: rotate(180deg);
+}
+
+/* ── Expanded Panel ── */
+.defcon-badge__panel {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: 300px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+    padding: 12px;
+    animation: defcon-slide-in 0.15s ease-out;
+}
+
+@keyframes defcon-slide-in {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.defcon-badge__header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.defcon-badge__current {
+    background: rgba(255, 255, 255, 0.03);
+    border-left: 3px solid;
+    border-radius: var(--radius-sm);
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+.defcon-badge__current-level {
+    font-size: 1.1rem;
+    font-weight: 800;
+    margin-bottom: 2px;
+}
+
+.defcon-badge__current-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+}
+
+.defcon-badge__current-desc {
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    line-height: 1.4;
+}
+
+/* ── Level List ── */
+.defcon-badge__levels {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: 8px;
+}
+
+.defcon-level-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 8px;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    transition: background 0.1s;
+}
+
+.defcon-level-row.active {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+}
+
+.defcon-level-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.defcon-level-num {
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    min-width: 12px;
+}
+
+.defcon-level-label {
+    font-weight: 500;
+    letter-spacing: 0.3px;
+}
+
+.defcon-badge__source {
+    font-size: 0.68rem;
+    color: var(--text-dim);
+    text-align: center;
+    padding-top: 6px;
+    border-top: 1px solid var(--border-color);
+}
