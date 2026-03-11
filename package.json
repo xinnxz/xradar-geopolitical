@@ -1,7 +1,17 @@
 {
   "name": "xradar-geopolitical",
-  "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "Real-time dashboard visualizing geopolitical conflicts and their impact on global financial markets.",
+  "author": "Luthfi",
+  "license": "MIT",
+  "keywords": [
+    "geopolitics",
+    "dashboard",
+    "react",
+    "finance",
+    "markets",
+    "conflict-map"
+  ],
   "type": "module",
   "scripts": {
     "dev": "vite",
